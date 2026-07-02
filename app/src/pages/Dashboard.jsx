@@ -25,7 +25,7 @@ function formatMinutes(minutes) {
   return `${h}h ${m}m`
 }
 
-export default function Dashboard() {
+export default function Dashboard({ onStartStudy }) {
   const {
     userName,
     currentDate,
@@ -98,10 +98,7 @@ export default function Dashboard() {
           {/* 开始专注按钮 — 大圆形播放按钮风格 */}
           <button
             className="w-24 h-24 bg-[#6a9f99] rounded-full flex justify-center items-center border-[8px] border-white/20 hover:scale-105 transition-transform active:scale-95 cursor-pointer"
-            onClick={() => {
-              // Phase 2 实现跳转到专注学习页
-              alert('开始专注 — Phase 2 待实现')
-            }}
+            onClick={onStartStudy}
           >
             <svg width="32" height="32" viewBox="0 0 24 24" fill="#fff">
               <polygon points="5 3 19 12 5 21 5 3" />
