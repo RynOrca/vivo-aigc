@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { useAppState } from '../data/AppContext.jsx'
 
 /**
  * 历史统计页 — 完全复用前端参考.jsx ScreenTwo 的布局和样式
@@ -18,18 +19,39 @@ const SearchIcon = () => (
   </svg>
 )
 
-export default function StatsPage({ onBack }) {
-  const stats = {
-    totalSessions: 12,
-    totalHours: 38,
-    streakDays: 5,
-    averageFocus: 78,
-  }
+/** 数字跳动动画 */
+function useCountUp(target, duration = 600) {
+  const [value, setValue] = useState(0)
+  useEffect(() => {
+    if (target === 0) { setValue(0); return }
+    let start = 0
+    const step = Math.ceil(target / (duration / 16))
+    const timer = setInterval(() => {
+      start += step
+      if (start >= target) { setValue(target); clearInterval(timer) }
+      else setValue(start)
+    }, 16)
+    return () => clearInterval(timer)
+  }, [target, duration])
+  return value
+}
 
-  // 最近 5 天专注趋势（模拟数据，替换为真实数据）
-  const focusTrend = [72, 80, 65, 85, stats.averageFocus]
+export default function StatsPage({ onBack }) {
+  const { totalSessions, totalMinutes, streakDays, averageFocusScore, totalFocusScores } = useAppState()
+
+  const totalHours = Math.round(totalMinutes / 60)
+  const displaySessions = useCountUp(totalSessions)
+  const displayHours = useCountUp(totalHours)
+  const displayStreak = useCountUp(streakDays)
+  const displayFocus = useCountUp(averageFocusScore)
+
+  // 专注趋势：取最近 5 个采样点，不足则用模拟数据补
+  const recentScores = totalFocusScores.slice(-5)
+  const focusTrend = recentScores.length >= 3
+    ? recentScores
+    : [72, 80, 65, 85, averageFocusScore || 78]
   const dayLabels = ['周一', '周二', '周三', '周四', '周五']
-  const highlightDay = 4 // 今天高亮位置（周五）
+  const highlightDay = Math.min(focusTrend.length - 1, 4)
 
   // SVG 坐标映射
   const svgW = 400
@@ -82,7 +104,7 @@ export default function StatsPage({ onBack }) {
             <div className="w-9 h-9 rounded-full bg-white border border-[#1a1a1a] flex justify-center items-center mb-3">
               <ActivityIcon />
             </div>
-            <div className="text-[28px] font-extrabold text-[#1a1a1a] mb-5">{stats.totalSessions}</div>
+            <div className="text-[28px] font-extrabold text-[#1a1a1a] mb-5">{displaySessions}</div>
             <div className="text-xs text-[#666] font-medium">学习次数</div>
           </div>
         </div>
@@ -96,7 +118,7 @@ export default function StatsPage({ onBack }) {
                 <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
               </svg>
             </div>
-            <div className="text-[28px] font-extrabold text-[#1a1a1a] mb-5">{stats.totalHours}h</div>
+            <div className="text-[28px] font-extrabold text-[#1a1a1a] mb-5">{displayHours}h</div>
             <div className="text-xs text-[#666] font-medium">总时长</div>
           </div>
         </div>
@@ -110,7 +132,7 @@ export default function StatsPage({ onBack }) {
                 <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />
               </svg>
             </div>
-            <div className="text-[28px] font-extrabold text-[#1a1a1a] mb-5">{stats.streakDays}</div>
+            <div className="text-[28px] font-extrabold text-[#1a1a1a] mb-5">{displayStreak}</div>
             <div className="text-xs text-[#666] font-medium">连续天数</div>
           </div>
         </div>
@@ -119,7 +141,7 @@ export default function StatsPage({ onBack }) {
       {/* 平均专注分 + 详情链接 — 模板原样 */}
       <div className="flex justify-between items-center px-6 mb-6">
         <div>
-          <h2 className="text-[64px] font-extrabold text-[#1a1a1a] leading-none tracking-tighter">{stats.averageFocus}%</h2>
+          <h2 className="text-[64px] font-extrabold text-[#1a1a1a] leading-none tracking-tighter">{displayFocus}%</h2>
           <p className="text-sm text-[#1a1a1a] font-bold">平均专注分</p>
         </div>
         <div className="text-center">
@@ -152,7 +174,7 @@ export default function StatsPage({ onBack }) {
             style={{ left: `${(highlightX / svgW) * 100}%` }}
             className="absolute top-2 -translate-x-1/2 bg-[#1a1a1a] text-white px-4 py-2 rounded-full text-base font-bold z-20 shadow-lg"
           >
-            {stats.averageFocus}%
+            {averageFocusScore || 78}%
             <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-[#1a1a1a]" />
           </div>
 

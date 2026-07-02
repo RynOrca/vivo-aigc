@@ -20,7 +20,7 @@ function L1Toast({ event, onDismiss }) {
   }, [onDismiss])
 
   return (
-    <div className="absolute top-4 left-4 right-4 z-50 animate-[slideDown_0.3s_ease-out]">
+    <div className="absolute top-4 left-4 right-4 z-50 animate-slide-down">
       <div className="bg-white/95 backdrop-blur rounded-[20px] px-4 py-3 shadow-lg border border-[#e8ede3] flex items-start gap-3">
         <div className="w-8 h-8 bg-[#e8ede3] rounded-full flex justify-center items-center shrink-0 mt-0.5">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3f7b73" strokeWidth="2">
@@ -44,7 +44,7 @@ function L1Toast({ event, onDismiss }) {
 function L2Popup({ event, onDismiss }) {
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-      <div className="bg-white rounded-[32px] px-6 pt-8 pb-6 mx-8 shadow-2xl border border-[#e8ede3] w-full max-w-[300px] text-center">
+      <div className="bg-white rounded-[32px] px-6 pt-8 pb-6 mx-8 shadow-2xl border border-[#e8ede3] w-full max-w-[300px] text-center animate-scale-in">
         {/* 图标 */}
         <div className="w-16 h-16 bg-[#f2e3e1] rounded-full flex justify-center items-center mx-auto mb-4">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#db7688" strokeWidth="2">
@@ -73,7 +73,7 @@ function L2Popup({ event, onDismiss }) {
 function L3Overlay({ event, onDismiss }) {
   return (
     <div className="absolute inset-0 z-50 flex flex-col items-center justify-end bg-black/40 backdrop-blur-sm px-6 pb-12">
-      <div className="bg-white rounded-[40px] px-6 pt-10 pb-8 w-full shadow-2xl text-center">
+      <div className="bg-white rounded-[40px] px-6 pt-10 pb-8 w-full shadow-2xl text-center animate-scale-in">
         {/* 图标 */}
         <div className="w-20 h-20 bg-[#db7688] rounded-full flex justify-center items-center mx-auto mb-5">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
@@ -124,12 +124,3 @@ export default function InterventionModal({ event, onDismiss }) {
   }
 }
 
-/* 注入简单动画 */
-const style = document.createElement('style')
-style.textContent = `
-  @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-`
-document.head.appendChild(style)

@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import DashboardHeader from '../components/DashboardHeader.jsx'
 import { dashboardData } from '../data/mockData.js'
+import { useAppState } from '../data/AppContext.jsx'
 
 /* 学习时长图标 */
 const ClockIcon = () => (
@@ -25,14 +26,33 @@ function formatMinutes(minutes) {
   return `${h}h ${m}m`
 }
 
+/** 数字跳动动画 hook */
+function useCountUp(target, duration = 600) {
+  const [value, setValue] = useState(0)
+  useEffect(() => {
+    if (target === 0) { setValue(0); return }
+    let start = 0
+    const step = Math.ceil(target / (duration / 16))
+    const timer = setInterval(() => {
+      start += step
+      if (start >= target) { setValue(target); clearInterval(timer) }
+      else setValue(start)
+    }, 16)
+    return () => clearInterval(timer)
+  }, [target, duration])
+  return value
+}
+
 export default function Dashboard({ onStartStudy, onGoStats, onGoSettings }) {
-  const {
-    userName,
-    currentDate,
-    todayStudyMinutes,
-    todayEffectiveMinutes,
-    aiEncouragement,
-  } = dashboardData
+  const { userName, currentDate } = dashboardData
+  const { todayStudyMinutes, todayEffectiveMinutes, todaySessions } = useAppState()
+
+  const displayStudy = useCountUp(todayStudyMinutes)
+  const displayEffective = useCountUp(todayEffectiveMinutes)
+
+  const aiEncouragement = todaySessions > 0
+    ? `今天已经完成了 ${todaySessions} 次学习，累计 ${todayStudyMinutes} 分钟。状态不错，继续保持！ 💪`
+    : '准备好开始今天的学习了吗？我会一直陪着你 💪'
 
   return (
     <>
@@ -55,7 +75,7 @@ export default function Dashboard({ onStartStudy, onGoStats, onGoSettings }) {
             <div>
               <p className="text-xs text-[#666] mb-0.5">学习时长</p>
               <h4 className="text-lg font-bold text-[#3f7b73]">
-                {formatMinutes(todayStudyMinutes)}
+                {formatMinutes(displayStudy)}
               </h4>
             </div>
           </div>
@@ -68,7 +88,7 @@ export default function Dashboard({ onStartStudy, onGoStats, onGoSettings }) {
             <div>
               <p className="text-xs text-[#666] mb-0.5">有效学习</p>
               <h4 className="text-lg font-bold text-[#db7688]">
-                {formatMinutes(todayEffectiveMinutes)}
+                {formatMinutes(displayEffective)}
               </h4>
             </div>
           </div>
