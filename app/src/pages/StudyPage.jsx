@@ -27,6 +27,8 @@ export default function StudyPage({ onEndStudy }) {
   const timerRef = useRef(null)
   const prevLevelRef = useRef('NONE')
   const lastInterventionRef = useRef(0)
+  const focusHistoryRef = useRef([])
+  const distractionCountRef = useRef(0)
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -36,6 +38,11 @@ export default function StudyPage({ onEndStudy }) {
         if (next % 3 === 0) {
           setState((currentState) => {
             const newState = generateStudyState(next)
+
+            // 每 5 秒采样专注分
+            if (next % 5 === 0) {
+              focusHistoryRef.current.push(newState.focusScore)
+            }
 
             // 分心等级变化 → 触发干预
             const prevLevel = prevLevelRef.current
@@ -50,6 +57,7 @@ export default function StudyPage({ onEndStudy }) {
               setIntervention(generateIntervention(newState.sessionId, newLevel))
             }
             prevLevelRef.current = newLevel
+            distractionCountRef.current = newState.distractionCount
 
             return newState
           })
@@ -60,6 +68,16 @@ export default function StudyPage({ onEndStudy }) {
 
     return () => clearInterval(timerRef.current)
   }, [])
+
+  const handleEndStudy = () => {
+    clearInterval(timerRef.current)
+    const totalMinutes = Math.round(elapsed / 60)
+    onEndStudy({
+      totalMinutes: Math.max(1, totalMinutes),
+      focusHistory: [...focusHistoryRef.current],
+      distractionCount: distractionCountRef.current,
+    })
+  }
 
   const { focusScore, fatigueScore, distractionLevel, distractionCount } = state
 
@@ -133,7 +151,7 @@ export default function StudyPage({ onEndStudy }) {
           {/* 结束学习按钮 */}
           <button
             className="w-20 h-20 bg-[#db7688] rounded-full flex justify-center items-center border-[6px] border-white/20 hover:scale-105 transition-transform active:scale-95 cursor-pointer mt-2"
-            onClick={onEndStudy}
+            onClick={handleEndStudy}
           >
             <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff">
               <rect x="6" y="6" width="12" height="12" rx="2" />
