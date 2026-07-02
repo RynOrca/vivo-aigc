@@ -55,3 +55,13 @@
   - Mock 模式开关 Toggle
   - 版本信息 + 隐私说明
 - Dashboard 新增「学习统计」「设置」快捷入口
+
+### Phase 6: 数据持久化 + 动画 + API 合规
+- **Git**: `(commit 6)`
+- `AppContext` 全局状态层（useReducer + Context）：跨页面共享学习统计数据
+- Dashboard/StatsPage 数据联动：完成学习 → 回首页 → 数据实时更新
+- 数字跳动动画（`useCountUp` hook）：Dashboard 和 StatsPage 数字平滑递增
+- 页面切换动画：`pageEnter` (fade + slide up 12px)
+- 干预弹窗动画统一到 CSS class（`slide-down` / `scale-in`）
+- InterventionModal 移除 render 时 DOM 注入（改用 index.css）
+- **API 合规验证**：StudyState / InterventionEvent / StudyReport 全部字段匹配 `docs/API.md` ✅
