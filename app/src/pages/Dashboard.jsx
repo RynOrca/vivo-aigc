@@ -25,7 +25,7 @@ function formatMinutes(minutes) {
   return `${h}h ${m}m`
 }
 
-export default function Dashboard({ onStartStudy }) {
+export default function Dashboard({ onStartStudy, onGoStats, onGoSettings }) {
   const {
     userName,
     currentDate,
@@ -72,6 +72,30 @@ export default function Dashboard({ onStartStudy }) {
               </h4>
             </div>
           </div>
+        </div>
+
+        {/* 快捷入口：统计 + 设置 */}
+        <div className="flex gap-3 mb-3">
+          <button
+            onClick={onGoStats}
+            className="flex-1 flex items-center gap-2 bg-white rounded-[20px] px-4 py-2.5 border border-[#e8ede3] hover:bg-[#f9f9f9] transition"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3f7b73" strokeWidth="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+              <polyline points="17 6 23 6 23 12" />
+            </svg>
+            <span className="text-xs text-[#3f7b73] font-medium">学习统计</span>
+          </button>
+          <button
+            onClick={onGoSettings}
+            className="flex items-center gap-2 bg-white rounded-[20px] px-4 py-2.5 border border-[#e8ede3] hover:bg-[#f9f9f9] transition"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#db7688" strokeWidth="2">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+            <span className="text-xs text-[#db7688] font-medium">设置</span>
+          </button>
         </div>
 
         {/* AI 鼓励语卡片 */}

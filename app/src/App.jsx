@@ -4,6 +4,8 @@ import Dashboard from './pages/Dashboard.jsx'
 import StudyPage from './pages/StudyPage.jsx'
 import RestChat from './pages/RestChat.jsx'
 import StudyReport from './pages/StudyReport.jsx'
+import StatsPage from './pages/StatsPage.jsx'
+import SettingsPage from './pages/SettingsPage.jsx'
 
 export default function App() {
   const [page, setPage] = useState('dashboard')
@@ -14,7 +16,7 @@ export default function App() {
     oralReview: '',
   })
 
-  const handleStartStudy = () => setPage('study')
+  const goTo = (p) => () => setPage(p)
 
   const handleEndStudy = (data) => {
     setSessionData((prev) => ({ ...prev, ...data }))
@@ -40,7 +42,11 @@ export default function App() {
     <div className="flex justify-center items-center p-10 bg-[#1e1e1e] min-h-screen">
       <PhoneFrame>
         {page === 'dashboard' && (
-          <Dashboard onStartStudy={handleStartStudy} />
+          <Dashboard
+            onStartStudy={goTo('study')}
+            onGoStats={goTo('stats')}
+            onGoSettings={goTo('settings')}
+          />
         )}
         {page === 'study' && (
           <StudyPage onEndStudy={handleEndStudy} />
@@ -59,6 +65,12 @@ export default function App() {
             oralReview={sessionData.oralReview}
             onBackHome={handleBackHome}
           />
+        )}
+        {page === 'stats' && (
+          <StatsPage onBack={goTo('dashboard')} />
+        )}
+        {page === 'settings' && (
+          <SettingsPage onBack={goTo('dashboard')} />
         )}
       </PhoneFrame>
     </div>
