@@ -41,3 +41,17 @@
 - `reportMock`：AI 伴聊文案模板 + 日报生成器
 - 完整闭环：Dashboard → 专注 → 休息伴聊 → 日报 → 回首页
 - StudyPage 专注分采样（每 5 秒），供日报生成专注曲线
+- **Fix**: RestChat 文案每秒随机变化 → useRef 只在挂载时生成一次
+
+### Phase 5: 学习统计 + 设置页
+- **Git**: `(commit 5)`
+- `StatsPage` 学习统计页：完全复用 ScreenTwo 模板
+  - 三卡片（学习次数/总时长/连续天数）
+  - 平均专注分 64px 大数字 + SVG 折线趋势图
+  - 5 日 X 轴标签 + 数据波动标签
+- `SettingsPage` 设置页：
+  - 每日学习时长滑块（15-120min）
+  - 提醒强度选择（温和/标准/强提醒）
+  - Mock 模式开关 Toggle
+  - 版本信息 + 隐私说明
+- Dashboard 新增「学习统计」「设置」快捷入口
