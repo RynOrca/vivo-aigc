@@ -9,7 +9,8 @@ function formatCountdown(seconds) {
 }
 
 export default function RestChat({ totalMinutes, onComplete }) {
-  const restData = generateRestChat(totalMinutes)
+  const restDataRef = useRef(generateRestChat(totalMinutes))
+  const restData = restDataRef.current
   const [restSeconds, setRestSeconds] = useState(restData.restDuration * 60)
   const [userInput, setUserInput] = useState('')
   const timerRef = useRef(null)
