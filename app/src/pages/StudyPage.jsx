@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import ArcProgress from '../components/ArcProgress.jsx'
 import InterventionModal from '../components/InterventionModal.jsx'
+
+/*
+ * ==== Task 2 / Task 3 集成时 ====
+ * 替换下面两行为:
+ *   import { getStudyState, requestIntervention } from '../data/api.js'
+ * 并将 MOCK_MODE 改为 false（在 api.js 中）
+ */
 import { generateStudyState } from '../data/studyMock.js'
 import { generateIntervention } from '../data/interventionMock.js'
 
