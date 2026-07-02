@@ -49,7 +49,7 @@ export default function App() {
   return (
     <div className="flex justify-center items-center p-10 bg-[#1e1e1e] min-h-screen">
       <PhoneFrame>
-        <div className="page-enter" key={page}>
+        <div className="page-enter h-full relative" key={page}>
           {page === 'dashboard' && (
             <Dashboard
               onStartStudy={goTo('study')}
