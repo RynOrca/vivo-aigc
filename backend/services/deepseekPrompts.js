@@ -46,26 +46,34 @@ ${JSON.stringify(qwenRawFeatures, null, 2)}
 - 过去 5 个 focusScore 采样：${recentFiveStr}
 
 === 计算规则（请参考这些思路算出数值）===
-1. focusScore：
-   - isUserPresent=false → 固定 0（因为人不在）
-   - eyeClosedRatio>0.3 → 按比值线性扣 15~40 分
-   - gazeAwaySeconds>20 → 考虑 L1 阈值；>60 → 考虑 L2
-   - headDownSeconds>15 → 扣 10~20 分
-   - currentAppType==="entertainment" → 直接 L3 且 focusScore<30
-   - 最终分数做平滑：新分数 = 历史*0.3 + 视觉估分*0.7，然后 clamp(0, 100)
+重要说明：Qwen-VL 从单张照片无法精确估算时长（gazeAwaySeconds/headDownSeconds 是粗略估计）。
+请更多依据瞬时面部状态（视线方向、闭眼程度、头部角度）来判断，而非过度依赖秒数。
 
-2. fatigueScore：
+1. focusScore（满分 100）：
+   - isUserPresent=false → 固定 0
+   - 基础分 90，扣分项：
+     * gazeDirection != "center" → 扣 15~30 分（视线偏离屏幕）
+     * eyeClosedRatio>0.2 → 扣 10~25 分（闭眼=疲劳/走神）
+     * headDown=true → 扣 10~20 分（低头看手机/书本）
+     * headYawDeg 绝对值>15 → 扣 5~15 分（头部明显偏转）
+     * currentAppType==="entertainment" → focusScore<30
+   - 最终平滑：新分数 = 历史*0.3 + 视觉估分*0.7，clamp(0, 100)
+
+2. fatigueScore（满分 100）：
    - 基础 = elapsedSeconds / 60 × 2（每分钟 +2）
    - eyeClosedRatio>0.15 → +15
-   - mouthOpen=true 且 mouthOpenCount>2 → +20
+   - eyeClosedRatio>0.3 → +30
+   - mouthOpen=true 且 mouthOpenCount>0 → +15（打哈欠迹象）
    - headDown 持续 >30s → +10
    - clamp(0, 100)
 
-3. distractionLevel：
+3. distractionLevel（降低阈值，让系统更敏感）：
    - !isUserPresent → L3
    - currentAppType==="entertainment" → L3
-   - gazeAway>=60s 或 focusScore<50 → L2
-   - gazeAway>=20s 或 focusScore<70 → L1
+   - gazeDirection != "center" 或 headDown=true 且 eyeClosedRatio>0.25 → L2
+   - gazeDirection != "center" 或 headDown=true 或 eyeClosedRatio>0.15 → L1
+   - focusScore<60 → L2
+   - focusScore<75 → L1
    - else NONE
 
 4. emotion 按 map 映射：
@@ -73,6 +81,7 @@ ${JSON.stringify(qwenRawFeatures, null, 2)}
    - fatigueScore>=60 → 'tired'
    - distractionLevel 是 L2 或 L3 且疲劳不高 → 'distracted'
    - distractionLevel=L3 且 !isUserPresent → 'anxious'
+   - else 'focused'
 
 请严格按以下 JSON schema 输出，不要任何其他文字（包括注释、解释、markdown 代码块）：
 

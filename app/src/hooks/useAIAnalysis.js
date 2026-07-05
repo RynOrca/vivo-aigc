@@ -86,6 +86,7 @@ export function useAIAnalysis({
         focusScore: result.studyState.focusScore,
         fatigueScore: result.studyState.fatigueScore,
         distractionLevel: result.studyState.distractionLevel,
+        distractionCount: result.studyState.distractionCount || 0,  // 后端累积值
         emotion: result.studyState.emotion,
         eyeClosedRatio: result.faceFeatures.eyeClosedRatio,
         gazeDirection: result.faceFeatures.gazeDirection,
@@ -129,7 +130,7 @@ export function useAIAnalysis({
       focusScore, fatigueScore, distractionLevel, emotion,
       currentScene: 'study',
       isUserPresent: latest.isUserPresent,
-      distractionCount: buf.filter(b => b.distractionLevel !== 'NONE').length,
+      distractionCount: latest.distractionCount || 0,  // 后端累积值，非本地窗口
       faceFeatures: {
         eyeClosedRatio: latest.eyeClosedRatio,
         gazeDirection: latest.gazeDirection,

@@ -142,10 +142,18 @@ router.post('/analyze-face', async (req, res) => {
 
     // 3e. 更新 session 状态
     session.focusScores.push(studyState.focusScore)
+    // 分心计数去重：同一次分心持续期间只计 1 次（15 秒冷却）
+    const now = Math.floor(Date.now() / 1000)
     if (studyState.distractionLevel !== 'NONE') {
-      session.distractionCount = (session.distractionCount || 0) + 1
-      studyState.distractionCount = session.distractionCount
+      if (!session.lastDistractionTime || (now - session.lastDistractionTime) > 15) {
+        session.distractionCount = (session.distractionCount || 0) + 1
+        session.lastDistractionTime = now
+      }
+    } else {
+      // 恢复正常时重置冷却，下次分心能立即计数
+      session.lastDistractionTime = 0
     }
+    studyState.distractionCount = session.distractionCount || 0
     session.lastState = studyState
 
     // 3f. 生成干预事件
@@ -177,6 +185,20 @@ router.post('/analyze-face', async (req, res) => {
     // 降级 Mock
     const faceFeatures = getMockFaceFeatures()
     const studyState = buildMockStudyState(faceFeatures, session)
+
+    // 降级路径也更新 session（保持数据一致性）
+    session.focusScores.push(studyState.focusScore)
+    const now = Math.floor(Date.now() / 1000)
+    if (studyState.distractionLevel !== 'NONE') {
+      if (!session.lastDistractionTime || (now - session.lastDistractionTime) > 15) {
+        session.distractionCount = (session.distractionCount || 0) + 1
+        session.lastDistractionTime = now
+      }
+    } else {
+      session.lastDistractionTime = 0
+    }
+    studyState.distractionCount = session.distractionCount || 0
+    session.lastState = studyState
 
     return res.json({
       code: 0,
