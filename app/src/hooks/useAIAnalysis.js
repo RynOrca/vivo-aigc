@@ -21,7 +21,7 @@
  * @param {(result: object) => void} opts.onIntervention - 干预事件回调
  * @param {number} [opts.captureIntervalMs=3000]
  * @param {number} [opts.aggregateIntervalMs=30000]
- * @returns {{ displayState, faceFeatures, lastAnalysisTime, isAnalyzing, bufferCount }}
+ * @returns {{ displayState, faceFeatures, lastAnalysisTime, isAnalyzing, bufferCount, lastError, consecutiveErrors }}
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { analyzeFace } from '../data/api.js'
@@ -41,6 +41,8 @@ export function useAIAnalysis({
   const [lastAnalysisTime, setLastAnalysisTime] = useState(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [bufferCount, setBufferCount] = useState(0)
+  const [lastError, setLastError] = useState(null)
+  const [consecutiveErrors, setConsecutiveErrors] = useState(0)
 
   const bufferRef = useRef([])
   const captureTimerRef = useRef(null)
@@ -100,6 +102,8 @@ export function useAIAnalysis({
       setLastAnalysisTime(Date.now())
     } catch (e) {
       console.warn('[AIAnalysis] capture failed:', e.message)
+      setLastError(e.message)
+      setConsecutiveErrors(c => c + 1)
     } finally {
       setIsAnalyzing(false)
     }
@@ -138,6 +142,10 @@ export function useAIAnalysis({
         isUserPresent: latest.isUserPresent,
       },
     })
+
+    // 成功聚合 → 清除错误
+    setLastError(null)
+    setConsecutiveErrors(0)
 
     // 检查干预
     if (distractionLevel !== 'NONE' && distractionLevel !== prevLevelRef.current) {
@@ -190,5 +198,5 @@ export function useAIAnalysis({
     }
   }, [enabled, paused, captureIntervalMs, aggregateIntervalMs])
 
-  return { displayState, faceFeatures, lastAnalysisTime, isAnalyzing, bufferCount }
+  return { displayState, faceFeatures, lastAnalysisTime, isAnalyzing, bufferCount, lastError, consecutiveErrors }
 }

@@ -155,6 +155,7 @@ export default function StudyPage({ onEndStudy }) {
         <p className={'text-white font-extrabold tracking-widest leading-none ' + timerCls}>{fmt(elapsed)}</p>
         {!selfieMode && <p className="text-white/60 text-xs">{(distL[distractionLevel] || '正常') + ' · ' + (emoL[emotion] || emotion)}{aiEnabled && lastSec != null && ' · ' + lastSec + 's 前'}</p>}
         {cameraError && <p className="text-yellow-200 text-[10px] mt-1">{cameraError}</p>}
+        {aiEnabled && ai.lastError && <p className="text-yellow-200 text-[10px] mt-1">⚠️ API 错误 (×{ai.consecutiveErrors}): {ai.lastError.slice(0, 60)}</p>}
       </div>
 
       {/* 自拍模式 */}

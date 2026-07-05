@@ -23,11 +23,11 @@ import { analyzeFaceDirect } from './aiPipeline.js'
 
 // ===== 配置 =====
 
-// 使用 let 而非 const，支持运行时切换（Settings 页 Toggle 生效关键）
-export let MOCK_MODE = true
-
 // 直连模式：跳过后端，前端直接调用 Qwen-VL + DeepSeek API（APK 默认启用）
 export let DIRECT_MODE = typeof window !== 'undefined' && !!(window.Capacitor || window.__capacitor)
+
+// Mock 模式：Direct 开启时默认关闭（真实 AI 分析），Web 开发时默认开启
+export let MOCK_MODE = !DIRECT_MODE
 
 /** 运行时切换直连模式 */
 export function setDirectMode(value) {

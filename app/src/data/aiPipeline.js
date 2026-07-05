@@ -260,4 +260,50 @@ export async function analyzeFaceDirect(base64, ctx = {}) {
   return { faceFeatures, studyState, intervention }
 }
 
-export default { analyzeFaceDirect }
+// ===== API 连通性测试 =====
+
+/**
+ * 测试 Qwen-VL API 连通性
+ * @returns {Promise<{ ok: boolean, message: string, latencyMs: number }>}
+ */
+export async function testQwenConnectivity() {
+  const key = getQewnKey()
+  const url = getQewnUrl()
+  const start = Date.now()
+  try {
+    const res = await openaiFetch(url, key, {
+      model: QEWN_DEFAULT_MODEL,
+      messages: [{ role: 'user', content: '回复 OK' }],
+      max_tokens: 10,
+    })
+    const latency = Date.now() - start
+    return { ok: true, message: `连通 (${latency}ms): ${res.slice(0, 30)}`, latencyMs: latency }
+  } catch (e) {
+    const latency = Date.now() - start
+    return { ok: false, message: e.message.slice(0, 120), latencyMs: latency }
+  }
+}
+
+/**
+ * 测试 DeepSeek API 连通性
+ * @returns {Promise<{ ok: boolean, message: string, latencyMs: number }>}
+ */
+export async function testDeepseekConnectivity() {
+  const key = getDeepseekKey()
+  const url = getDeepseekUrl()
+  const start = Date.now()
+  try {
+    const res = await openaiFetch(url, key, {
+      model: DEEPSEEK_DEFAULT_MODEL,
+      messages: [{ role: 'user', content: '回复 OK' }],
+      max_tokens: 10,
+    })
+    const latency = Date.now() - start
+    return { ok: true, message: `连通 (${latency}ms): ${res.slice(0, 30)}`, latencyMs: latency }
+  } catch (e) {
+    const latency = Date.now() - start
+    return { ok: false, message: e.message.slice(0, 120), latencyMs: latency }
+  }
+}
+
+export default { analyzeFaceDirect, testQwenConnectivity, testDeepseekConnectivity }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { MOCK_MODE, setMockMode, DIRECT_MODE, setDirectMode } from '../data/api.js'
-import { getQewnKey, setQewnKey, getDeepseekKey, setDeepseekKey } from '../data/aiPipeline.js'
+import { getQewnKey, setQewnKey, getDeepseekKey, setDeepseekKey, testQwenConnectivity, testDeepseekConnectivity } from '../data/aiPipeline.js'
 
 export default function SettingsPage({ onBack }) {
   const [goalMinutes, setGoalMinutes] = useState(45)
@@ -9,6 +9,8 @@ export default function SettingsPage({ onBack }) {
   const [directMode, setLocalDirectMode] = useState(DIRECT_MODE)
   const [qewnKey, setLocalQewnKey] = useState(getQewnKey)
   const [deepseekKey, setLocalDeepseekKey] = useState(getDeepseekKey)
+  const [testing, setTesting] = useState(false)
+  const [testResults, setTestResults] = useState(null)
 
   const handleMockToggle = () => {
     const next = !mockMode
@@ -22,6 +24,20 @@ export default function SettingsPage({ onBack }) {
   }
   const handleQewnSave = () => { setQewnKey(qewnKey); alert('Qwen-VL Key 已保存') }
   const handleDSSave = () => { setDeepseekKey(deepseekKey); alert('DeepSeek Key 已保存') }
+
+  const handleTestConnectivity = async () => {
+    setTesting(true)
+    setTestResults(null)
+    // 先保存当前 key（可能用户修改了还没保存）
+    setQewnKey(qewnKey)
+    setDeepseekKey(deepseekKey)
+
+    const results = {}
+    try { results.qwen = await testQwenConnectivity() } catch (e) { results.qwen = { ok: false, message: e.message } }
+    try { results.deepseek = await testDeepseekConnectivity() } catch (e) { results.deepseek = { ok: false, message: e.message } }
+    setTestResults(results)
+    setTesting(false)
+  }
 
   return (
     <div className="flex flex-col h-full bg-[#f7f8ec]">
@@ -143,6 +159,32 @@ export default function SettingsPage({ onBack }) {
                 placeholder="sk-xxx" className="flex-1 text-xs px-3 py-2 rounded-full border border-[#ddd] outline-none focus:border-[#db7688]" />
               <button onClick={handleDSSave}
                 className="bg-[#3f7b73] text-white text-xs px-3 py-2 rounded-full font-bold shrink-0">保存</button>
+            </div>
+
+            {/* API 连通性测试 */}
+            <div className="mt-3 pt-3 border-t border-[#f0f0f0]">
+              <button
+                onClick={handleTestConnectivity}
+                disabled={testing}
+                className="w-full bg-[#558d88] text-white text-xs px-4 py-2.5 rounded-full font-bold disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {testing ? (
+                  <><span className="inline-block w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />测试中…</>
+                ) : '🔍 测试 API 连通性'}
+              </button>
+
+              {testResults && (
+                <div className="mt-2 space-y-1.5">
+                  <div className={`text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 ${testResults.qwen?.ok ? 'bg-[#e8ede3] text-[#3f7b73]' : 'bg-[#fde8ec] text-[#db7688]'}`}>
+                    <span className="font-bold">{testResults.qwen?.ok ? '✅' : '❌'} Qwen-VL:</span>
+                    <span className="truncate">{testResults.qwen?.message || '未测试'}</span>
+                  </div>
+                  <div className={`text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 ${testResults.deepseek?.ok ? 'bg-[#e8ede3] text-[#3f7b73]' : 'bg-[#fde8ec] text-[#db7688]'}`}>
+                    <span className="font-bold">{testResults.deepseek?.ok ? '✅' : '❌'} DeepSeek:</span>
+                    <span className="truncate">{testResults.deepseek?.message || '未测试'}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
