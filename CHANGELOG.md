@@ -2,6 +2,18 @@
 
 ## [未标记] — 2026-07-06
 
+### DeepSeek 直连生成学习日报 + 休息伴聊
+- **Git**: `最新提交`
+- **问题**：学习日报和休息伴聊只用硬编码模板，没有调用 AI
+  - 根因：`requestReport()` 和 `requestRestChat()` 没有 `DIRECT_MODE` 分支，只处理 Mock/后端两种模式
+  - APK 上后端不存在 → 抛异常 → catch 里用模板 → 用户看到固定文案
+- **修复**：
+  - `aiPipeline.js`：新增 `generateReportDirect()` + `generateRestChatDirect()`，用 DeepSeek 生成个性化学报和伴聊
+  - `api.js`：`requestReport()` / `requestRestChat()` 在 DIRECT_MODE 时优先走 DeepSeek，失败降级模板
+- **新增功能**：
+  - 学习日报：DeepSeek 根据实际专注数据生成 summary / advantage / problem / suggestions / encouragement
+  - 休息伴聊：DeepSeek 生成关怀 message / 快捷回复 / 复盘引导问题
+
 ### 修复 CORS 导致 APK 上 API 连通性测试失败
 - **Git**: `最新提交`
 - **根因**：阿里云 MAAS API (`llm-dm4c0m7ddxaxtw51.cn-beijing.maas.aliyuncs.com`) **不返回 `Access-Control-Allow-Origin` 头**，浏览器/WebView 的 `fetch()` 被 CORS 策略拦截
