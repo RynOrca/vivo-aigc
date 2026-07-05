@@ -2,6 +2,38 @@
 
 ## [未标记] — 2026-07-05
 
+### Phase 10: 前端接入 AI 感知管线 + 完整可运行 Demo
+- **Git**: `a4d5e24` (前端) + docs commit (待做)
+- **StudyPage 重构**（核心改变）：
+  - ❌ 移除：200 秒 Mock 场景循环（`getStudyState(elapsed)` 按时间假数据）
+  - ✅ 新增：`[🤖 启动 AI 感知]` 按钮 → `getUserMedia({ facingMode: 'user' })` 拿前置摄像头
+  - ✅ 每 5 秒 canvas 截帧 → `POST /api/ai/analyze-face`（传 base64）
+  - ✅ 返回 `studyState` 直接驱动 UI（focusScore / fatigueScore / distractionLevel）
+  - ✅ 返回 `intervention` 如果 distractionLevel != NONE → 触发弹窗（冷却 15 秒）
+  - ✅ AI 面部分析卡片显示 4 个实时字段：eyeClosedRatio / gazeDirection / headYawDeg / isUserPresent
+  - ✅ 摄像头失败 fallback → `[上传照片]` 文件选择手动分析
+  - ✅ `[📷 自拍]` 模式保留（全屏摄像头 + 浮动小窗）
+- **api.js 新增**：
+  - `analyzeFace(sessionId, base64, elapsed)` 统一 API
+  - `generateMockFaceAnalysis(sessionId, elapsed)` — Mock 分支按时长模拟疲劳曲线
+  - Mock 时返回 `{ faceFeatures, studyState, intervention }` 完整包
+- **完整可运行 Demo 流程**：
+  ```
+  Dashboard [开始专注] → StudyPage
+      → 点击 [🤖 启动 AI 感知] → 授权摄像头
+      → 每 5 秒自动识图 → UI 实时显示闭眼占比/视线方向/头部偏角
+      → 用户偏头/闭眼 → distractionLevel 变化 → L1/L2/L3 弹窗
+      → 结束学习 → RestChat（DeepSeek 伴聊文案）
+      → StudyReport（DeepSeek JSON Mode 生成日报）
+      → 回 Dashboard（数据卡片更新）
+  ```
+- **验证通过**：
+  - `vite build` 成功（47 modules）
+  - 后端 health API 返回 Provider 状态
+  - 后端 analyze-face 端到端验证通过（Qwen-VL 读数 + DeepSeek 校准 + 干预）
+
+## [未标记] — 2026-07-05
+
 ### Phase 9: 多模型接入 + AI 驱动感知管线
 - **Git**: `3c517d1` (代码) + docs commit (待做)
 - **技术亮点 — 识图不是拍题，而是感知疲劳/分心**：
