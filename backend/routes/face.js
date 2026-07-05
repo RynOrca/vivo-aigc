@@ -108,7 +108,7 @@ router.post('/analyze-face', async (req, res) => {
       {
         provider: process.env.DEFAULT_MODEL_PROVIDER,
         response_format: { type: 'json_object' },
-        max_tokens: 512,
+        max_tokens: 2048,
       },
     )
 

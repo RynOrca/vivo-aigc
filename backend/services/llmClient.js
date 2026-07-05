@@ -37,7 +37,9 @@ const QEWN_MODEL = process.env.QEWN_MODEL || 'qwen-vl-plus'
 // ===== 内部工具 =====
 
 async function openaiFetch(baseUrl, apiKey, body, { model, maxTokens = 1024 } = {}) {
-  const url = `${baseUrl.replace(/\/+$/, '')}/v1/chat/completions`
+  // 去掉末尾 /v1 防止重复拼接（阿里云 MAAS 等厂商的 baseUrl 已自带 /v1）
+  const base = baseUrl.replace(/\/+$/, '').replace(/\/v1\/?$/, '')
+  const url = `${base}/v1/chat/completions`
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -53,7 +55,11 @@ async function openaiFetch(baseUrl, apiKey, body, { model, maxTokens = 1024 } = 
   }
 
   const data = await response.json()
-  const content = data?.choices?.[0]?.message?.content
+  // 推理模型（deepseek-reasoner 等）可能把结果放在 reasoning_content 而非 content
+  let content = data?.choices?.[0]?.message?.content
+  if (!content || content.trim() === '') {
+    content = data?.choices?.[0]?.message?.reasoning_content
+  }
   if (!content) {
     throw new Error(`LLM 响应格式异常: ${JSON.stringify(data).slice(0, 200)}`)
   }
