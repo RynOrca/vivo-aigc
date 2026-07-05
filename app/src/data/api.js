@@ -53,10 +53,8 @@ async function apiCall(path, options = {}) {
     if (json.code !== 0) throw new Error(`API error ${json.code}: ${json.message}`)
     return json.data
   } catch (err) {
-    // 网络错误或后端未启动时降级到 Mock
-    if (!MOCK_MODE === false) {
-      console.warn(`[API] ${path} 请求失败，已降级 Mock:`, err.message)
-    }
+    // 后端不可用时给出清晰日志，由各业务函数决定是否降级 Mock
+    console.warn(`[API] ${path} 请求失败:`, err.message)
     throw err
   }
 }
@@ -192,10 +190,19 @@ export async function analyzeFace(sessionId, imageBase64, elapsedSeconds = 0) {
   if (MOCK_MODE) {
     return generateMockFaceAnalysis(sessionId, elapsedSeconds)
   }
-  return apiCall('/api/ai/analyze-face', {
-    method: 'POST',
-    body: JSON.stringify({ sessionId, image: { base64: imageBase64 } }),
-  })
+  // 空图片不调后端（预热/降级场景）
+  if (!imageBase64 || imageBase64.length < 100) {
+    return generateMockFaceAnalysis(sessionId, elapsedSeconds)
+  }
+  try {
+    return await apiCall('/api/ai/analyze-face', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId, image: { base64: imageBase64 } }),
+    })
+  } catch (err) {
+    console.warn('[API] analyzeFace 后端不可用，降级本地 Mock:', err.message)
+    return generateMockFaceAnalysis(sessionId, elapsedSeconds)
+  }
 }
 
 /**

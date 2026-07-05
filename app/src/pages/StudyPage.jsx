@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import ArcProgress from '../components/ArcProgress.jsx'
 import InterventionModal from '../components/InterventionModal.jsx'
-import { analyzeFace } from '../data/api.js'
+import { analyzeFace, startStudy, endStudy as apiEndStudy, MOCK_MODE } from '../data/api.js'
 import { useCamera } from '../hooks/useCamera.js'
 import { useAIAnalysis } from '../hooks/useAIAnalysis.js'
 
@@ -29,11 +29,29 @@ export default function StudyPage({ onEndStudy }) {
   const [isPaused, setIsPaused] = useState(false)
   const [selfieMode, setSelfieMode] = useState(false)
   const [aiEnabled, setAiEnabled] = useState(false)
-  const [sessionId] = useState(() => 'study_' + Date.now().toString(36))
+  const [sessionId, setSessionId] = useState(() => 'study_' + Date.now().toString(36))
   const [loading, setLoading] = useState(true)
+  const sessionRegisteredRef = useRef(false)
   const focusHistoryRef = useRef([])
 
-  // 自拍模式的 video（全屏显示）
+  // 注册学习会话（real 模式下需要后端 session，Mock 模式本地生成）
+  useEffect(() => {
+    if (sessionRegisteredRef.current) return
+    sessionRegisteredRef.current = true
+    const init = async () => {
+      try {
+        const result = await startStudy({ userId: 'demo_user', taskName: '专注学习' })
+        if (result?.sessionId) {
+          setSessionId(result.sessionId)
+          console.log('[StudyPage] 会话已注册:', result.sessionId, MOCK_MODE ? '(Mock)' : '(真实后端)')
+        }
+      } catch (e) {
+        console.warn('[StudyPage] 后端注册失败，使用本地 sessionId:', e.message)
+      }
+      setLoading(false)
+    }
+    init()
+  }, [])
   const selfieVideoRef = useRef(null)
   const selfieCam = useCamera(selfieVideoRef, selfieMode, 'user')
 
@@ -56,13 +74,6 @@ export default function StudyPage({ onEndStudy }) {
     captureIntervalMs: 3000,
     aggregateIntervalMs: 30000,
   })
-
-  // 初始加载（预热 API，不依赖 AI 模块返回值）
-  useEffect(() => {
-    analyzeFace(sessionId, '', 0)
-      .then(() => setLoading(false))
-      .catch(() => setLoading(false))
-  }, [sessionId])
 
   // 计时器
   useEffect(() => {
@@ -91,12 +102,15 @@ export default function StudyPage({ onEndStudy }) {
   // 结束学习
   const endStudy = useCallback(() => {
     aiCam.stop(); selfieCam.stop()
-    onEndStudy({
+    const result = {
       totalMinutes: Math.max(1, Math.round(elapsed / 60)),
       focusHistory: [...focusHistoryRef.current],
       distractionCount: ai.displayState ? ai.displayState.distractionCount : 0,
-    })
-  }, [elapsed, onEndStudy, ai.displayState, aiCam, selfieCam])
+    }
+    // 通知后端结束会话（忽略失败，不阻塞 UI）
+    apiEndStudy({ sessionId, ...result }).catch(() => {})
+    onEndStudy(result)
+  }, [elapsed, onEndStudy, ai.displayState, aiCam, selfieCam, sessionId])
 
   // 清理：只在组件卸载时停止所有摄像头（stop 函数通过 ref 读取，避免依赖对象重建触发误杀）
   const cleanupRef = useRef({ ai: () => {}, selfie: () => {} })
