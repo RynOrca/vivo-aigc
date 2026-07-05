@@ -3,7 +3,7 @@
 ## [未标记] — 2026-07-05
 
 ### Bug 修复：AI 感知卡死 + 自拍模式黑屏
-- **Git**: `(待提交)`
+- **Git**: `7bbfe29`
 - **Bug 1 — 点击「启动 AI 感知」页面卡死**：
   - 根因：`useAIAnalysis.js` 中 `useEffect` 依赖 `captureAndAnalyze` 和 `aggregate` callback，timer 每秒 tick 导致 callback 重建 → effect 重跑 → 无限 setState 循环
   - 修复：用 `useRef` 持有 `getElapsed`/`onIntervention`/`sessionId`，timer 内通过 ref 读取最新值；`useEffect` 依赖项仅保留 `enabled`/`paused`/interval 参数
