@@ -12,6 +12,8 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import studyRoutes from './routes/study.js'
 import aiRoutes from './routes/ai.js'
+import faceRoutes from './routes/face.js'
+import * as llmClient from './services/llmClient.js'
 
 // 加载环境变量
 dotenv.config()
@@ -39,8 +41,8 @@ app.get('/api/health', (_req, res) => {
     message: 'ok',
     data: {
       service: 'smart-study-companion-backend',
-      version: '0.1.0',
-      aiMockMode: process.env.AI_MOCK_MODE !== 'false',
+      version: '0.2.0',
+      ...llmClient.getProviderStatus(),
       timestamp: Math.floor(Date.now() / 1000),
     },
   })
@@ -50,6 +52,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/study', studyRoutes)
 app.use('/api/ai', aiRoutes)
+app.use('/api/ai', faceRoutes)  // /api/ai/analyze-face
 
 // ===== 兜底 404 =====
 
@@ -67,23 +70,29 @@ app.use((err, _req, res, _next) => {
 // ===== 启动 =====
 
 app.listen(PORT, () => {
+  const provider = process.env.DEFAULT_MODEL_PROVIDER || 'mock'
+  const aiModeLabel = process.env.AI_MOCK_MODE === 'false'
+    ? `真实 LLM (${provider})`
+    : 'Mock (本地模板)'
+
   console.log('')
   console.log('═══════════════════════════════════════════')
   console.log('  蓝心AI学习伴侣 — AI 后端服务')
   console.log(`  监听地址：http://localhost:${PORT}`)
-  console.log(`  AI 模式：${process.env.AI_MOCK_MODE === 'false' ? '蓝心 AI' : 'Mock (本地模板)'}`)
+  console.log(`  AI 模式：${aiModeLabel}`)
   console.log('═══════════════════════════════════════════')
   console.log('')
   console.log('  可用接口：')
-  console.log('    GET  /api/health           健康检查')
-  console.log('    POST /api/study/start      开始学习')
-  console.log('    GET  /api/study/state      获取状态')
-  console.log('    POST /api/study/end        结束学习')
-  console.log('    GET  /api/study/report/:id 获取日报')
-  console.log('    POST /api/ai/intervention  分级干预')
-  console.log('    POST /api/ai/rest-chat     休息伴聊')
-  console.log('    POST /api/ai/oral-review   复盘问题')
-  console.log('    POST /api/ai/report        学习日报')
+  console.log('    GET  /api/health            健康检查')
+  console.log('    POST /api/study/start       开始学习')
+  console.log('    GET  /api/study/state       获取状态')
+  console.log('    POST /api/study/end         结束学习')
+  console.log('    GET  /api/study/report/:id  获取日报')
+  console.log('    POST /api/ai/intervention   分级干预')
+  console.log('    POST /api/ai/rest-chat      休息伴聊')
+  console.log('    POST /api/ai/oral-review    复盘问题')
+  console.log('    POST /api/ai/report         学习日报（DeepSeek JSON Mode）')
+  console.log('    POST /api/ai/analyze-face   面部感知 (QwenVL→DeepSeek)')
   console.log('')
 })
 

@@ -18,7 +18,8 @@ const router = Router()
 
 // ===== 会话内存存储（Demo 用，后续可替换为数据库） =====
 
-const sessions = new Map()
+/** 会话 Map — 供 study.js / face.js 共享；Demo 阶段用内存，生产环境替换为数据库 */
+export const sessions = new Map()
 
 /**
  * POST /api/study/start
