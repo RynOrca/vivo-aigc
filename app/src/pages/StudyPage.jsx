@@ -98,8 +98,13 @@ export default function StudyPage({ onEndStudy }) {
     })
   }, [elapsed, onEndStudy, ai.displayState, aiCam, selfieCam])
 
-  // 清理
-  useEffect(() => () => { aiCam.stop(); selfieCam.stop() }, [aiCam, selfieCam])
+  // 清理：只在组件卸载时停止所有摄像头（stop 函数通过 ref 读取，避免依赖对象重建触发误杀）
+  const cleanupRef = useRef({ ai: () => {}, selfie: () => {} })
+  cleanupRef.current = { ai: aiCam.stop, selfie: selfieCam.stop }
+  useEffect(() => () => {
+    cleanupRef.current.ai()
+    cleanupRef.current.selfie()
+  }, [])
 
   if (loading) return (
     <div className="flex flex-col h-full bg-[#f7f8ec] items-center justify-center">

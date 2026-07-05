@@ -11,7 +11,7 @@
  * @param {string} mode - 'user' | 'environment' （WebRTC 标准 facingMode）
  * @returns {{ stream, error, loading, stop }}
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 
 let _globalStreamId = 0
 
@@ -61,14 +61,14 @@ export function useCamera(videoRef, enabled, mode = 'user') {
     }
   }, [enabled, mode, videoRef])
 
-  const stop = () => {
+  const stop = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop())
       streamRef.current = null
       _globalStreamId++
     }
     setStream(null)
-  }
+  }, [])
 
-  return { stream, error, loading, stop }
+  return useMemo(() => ({ stream, error, loading, stop }), [stream, error, loading, stop])
 }
