@@ -6,7 +6,13 @@
  *
  * 管线：
  *   摄像头截帧(base64) → Qwen-VL 面部分析 → DeepSeek 数值校准 → StudyState
+ *
+ * CORS 处理：
+ *   - APK/原生环境：CapacitorHttp 原生请求（无 CORS 限制）
+ *   - Web 浏览器：标准 fetch（开发时走 Vite 代理或后端）
  */
+
+import { CapacitorHttp } from '@capacitor/core'
 
 // ===== API Key 管理 =====
 
@@ -134,20 +140,50 @@ function parseJson(rawText) {
   return JSON.parse(m[0])
 }
 
-// ===== API 调用 =====
+// ===== HTTP 请求（APK 用原生 HTTP 绕过 CORS，Web 用 fetch）=====
 
-async function openaiFetch(baseUrl, apiKey, body) {
-  const base = baseUrl.replace(/\/+$/, '').replace(/\/v1\/?$/, '')
-  const res = await fetch(`${base}/v1/chat/completions`, {
+const _isNative = typeof window !== 'undefined' && !!(window.Capacitor || window.__capacitor)
+
+async function httpPostJson(url, headers, body) {
+  if (_isNative) {
+    // Capacitor 原生 HTTP — 无 CORS 限制
+    const res = await CapacitorHttp.request({
+      method: 'POST',
+      url,
+      headers,
+      data: body,
+      responseType: 'text',
+      connectTimeout: 30000,
+      readTimeout: 30000,
+    })
+    if (res.status < 200 || res.status >= 300) {
+      const errBody = typeof res.data === 'string' ? res.data : JSON.stringify(res.data || {})
+      throw new Error(`API ${res.status}: ${errBody.slice(0, 200)}`)
+    }
+    if (typeof res.data === 'object') return res.data
+    try { return JSON.parse(res.data) } catch (_) { throw new Error('响应非 JSON: ' + String(res.data).slice(0, 80)) }
+  }
+
+  // Web 环境：标准 fetch（开发时可用 Vite 代理或后端中转）
+  const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({ ...body, stream: false }),
+    headers,
+    body: JSON.stringify(body),
   })
   if (!res.ok) {
     const errText = await res.text()
     throw new Error(`API ${res.status}: ${errText.slice(0, 200)}`)
   }
-  const data = await res.json()
+  return res.json()
+}
+
+async function openaiFetch(baseUrl, apiKey, body) {
+  const base = baseUrl.replace(/\/+$/, '').replace(/\/v1\/?$/, '')
+  const url = `${base}/v1/chat/completions`
+  const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }
+
+  const data = await httpPostJson(url, headers, { ...body, stream: false })
+
   let content = data?.choices?.[0]?.message?.content
   if (!content || content.trim() === '') {
     content = data?.choices?.[0]?.message?.reasoning_content
