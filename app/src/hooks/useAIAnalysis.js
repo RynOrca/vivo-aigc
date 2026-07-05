@@ -71,7 +71,10 @@ export function useAIAnalysis({
         canvas.width = 320; canvas.height = 240
         const ctx = canvas.getContext('2d')
         ctx.drawImage(video, 0, 0, 320, 240)
-        base64 = canvas.toDataURL('image/jpeg', 0.7)
+        // canvas.toDataURL 返回 "data:image/jpeg;base64,xxx"，后端会再加一次前缀
+        // 这里只取纯 base64 部分，避免双前缀导致 Qwen-VL 无法解析
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
+        base64 = dataUrl.includes('base64,') ? dataUrl.split('base64,')[1] : dataUrl
       } catch (e) { /* noop */ }
     }
     setIsAnalyzing(true)

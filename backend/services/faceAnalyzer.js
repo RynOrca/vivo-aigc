@@ -75,49 +75,52 @@ function mockFaceFeatures() {
  * @param {boolean} [options.mock=false] - 强制返回 Mock（不上云）
  * @returns {Promise<object>} 面部特征粗分类数据
  */
+/**
+ * 把 Qwen-VL 返回的 JSON 对象 clamp 到合法范围
+ */
+function clampFeatures(features) {
+  return {
+    isUserPresent: features.isUserPresent !== false,
+    faceCount: Math.max(0, Math.min(5, features.faceCount | 0)),
+    eyeClosedRatio: clamp(parseFloat(features.eyeClosedRatio) || 0, 0, 1),
+    gazeDirection: ['center', 'left', 'right', 'up', 'down'].includes(features.gazeDirection)
+      ? features.gazeDirection
+      : 'center',
+    gazeAwaySeconds: Math.max(0, Math.min(300, features.gazeAwaySeconds | 0)),
+    headDown: Boolean(features.headDown),
+    headDownSeconds: Math.max(0, Math.min(300, features.headDownSeconds | 0)),
+    headYawDeg: clamp(parseFloat(features.headYawDeg) || 0, -90, 90),
+    headPitchDeg: clamp(parseFloat(features.headPitchDeg) || 0, -90, 90),
+    mouthOpen: Boolean(features.mouthOpen),
+    mouthOpenCount: Math.max(0, Math.min(10, features.mouthOpenCount | 0)),
+    currentAppType: ['study', 'neutral', 'entertainment'].includes(features.currentAppType)
+      ? features.currentAppType
+      : 'study',
+  }
+}
+
 export async function analyzeFace(imageInput, options = {}) {
   if (!imageInput || (!imageInput.url && !imageInput.base64)) {
     throw new Error('imageInput 必须包含 url 或 base64 字段')
   }
 
-  // Mock Key 优先
   if (options.mock === true) {
     return mockFaceFeatures()
   }
 
-  // 真实 Qwen-VL 调用
-  const imageUrl = imageInput.url || `data:image/jpeg;base64,${imageInput.base64}`
+  // 构造图片 URL：前端可能传纯 base64 或含 data:image/... 前缀的完整 data URL
+  const rawBase64 = imageInput.base64 || ''
+  const imageUrl = rawBase64.startsWith('data:')
+    ? rawBase64                                            // 已含完整 data URL 前缀
+    : rawBase64
+      ? `data:image/jpeg;base64,${rawBase64}`              // 纯 base64，拼接前缀
+      : (imageInput.url || '')                             // HTTP URL 兜底
 
   try {
     const raw = await visionCompletion(FACE_ANALYSIS_PROMPT, imageUrl)
-
-    // 用正则包裹 JSON（鲁棒）
     const m = raw.match(/\{[\s\S]*\}/)
-    if (!m) {
-      throw new Error(`Qwen-VL 响应中未找到 JSON: ${raw.slice(0, 200)}`)
-    }
-
-    const features = JSON.parse(m[0])
-
-    // 数值 clamp（防止 VL 模型返回越界值）
-    return {
-      isUserPresent: features.isUserPresent !== false,
-      faceCount: Math.max(0, Math.min(5, features.faceCount | 0)),
-      eyeClosedRatio: clamp(parseFloat(features.eyeClosedRatio) || 0, 0, 1),
-      gazeDirection: ['center', 'left', 'right', 'up', 'down'].includes(features.gazeDirection)
-        ? features.gazeDirection
-        : 'center',
-      gazeAwaySeconds: Math.max(0, Math.min(300, features.gazeAwaySeconds | 0)),
-      headDown: Boolean(features.headDown),
-      headDownSeconds: Math.max(0, Math.min(300, features.headDownSeconds | 0)),
-      headYawDeg: clamp(parseFloat(features.headYawDeg) || 0, -90, 90),
-      headPitchDeg: clamp(parseFloat(features.headPitchDeg) || 0, -90, 90),
-      mouthOpen: Boolean(features.mouthOpen),
-      mouthOpenCount: Math.max(0, Math.min(10, features.mouthOpenCount | 0)),
-      currentAppType: ['study', 'neutral', 'entertainment'].includes(features.currentAppType)
-        ? features.currentAppType
-        : 'study',
-    }
+    if (!m) throw new Error(`Qwen-VL 响应中未找到 JSON: ${raw.slice(0, 200)}`)
+    return clampFeatures(JSON.parse(m[0]))
   } catch (err) {
     console.warn(`[faceAnalyzer] Qwen-VL 分析失败，降级 Mock: ${err.message}`)
     return mockFaceFeatures()
