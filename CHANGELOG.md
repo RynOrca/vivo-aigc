@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## [未标记] — 2026-07-06
+
+### 修复 AI 管线静默降级 + API 连通性测试
+- **Git**: `7e9281e`
+- **问题**：APK 上开启直连 AI 模式、关闭 Mock，数据仍是随机生成的
+  - 根因 1：`MOCK_MODE` 默认 `true`，APK 上需手动关闭（现已改为 Direct 模式自动关 Mock）
+  - 根因 2：API 调用失败时静默降级为 Mock 数据，用户看不到错误提示
+- **修复**：
+  - `api.js`：`MOCK_MODE = !DIRECT_MODE`（Direct 开启时 Mock 自动关闭）
+  - `useAIAnalysis.js`：新增 `lastError` + `consecutiveErrors` 状态，暴露给 UI
+  - `StudyPage.jsx`：AI 启用时在头部显示 API 错误（黄色文字）
+  - `SettingsPage.jsx`：新增「🔍 测试 API 连通性」按钮，分别测试 Qwen-VL 和 DeepSeek
+  - `aiPipeline.js`：新增 `testQwenConnectivity()` + `testDeepseekConnectivity()` 测试函数
+- **附带修复**：APK 构建成功（SDK 36 + Gradle 缓存清理）
+
 ## [未标记] — 2026-07-05
 
 ### Bug 修复：AI 感知卡死 + 自拍模式黑屏
