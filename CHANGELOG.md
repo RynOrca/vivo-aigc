@@ -3,7 +3,7 @@
 ## [未标记] — 2026-07-05
 
 ### Bug 修复：AI 感知卡死 + 自拍模式黑屏
-- **Git**: `7bbfe29`
+- **Git**: `7bbfe29`, `a0c174a` (自拍模式闪灭)
 - **Bug 1 — 点击「启动 AI 感知」页面卡死**：
   - 根因：`useAIAnalysis.js` 中 `useEffect` 依赖 `captureAndAnalyze` 和 `aggregate` callback，timer 每秒 tick 导致 callback 重建 → effect 重跑 → 无限 setState 循环
   - 修复：用 `useRef` 持有 `getElapsed`/`onIntervention`/`sessionId`，timer 内通过 ref 读取最新值；`useEffect` 依赖项仅保留 `enabled`/`paused`/interval 参数
@@ -14,6 +14,9 @@
 - **代码质量**：
   - StudyPage 中 `getElapsed`/`onIntervention` 用 `useCallback` 包裹，保持引用稳定
   - 移除初始加载 effect 中的无效代码（`ai.displayState || null`）
+- **Bug 3 — 自拍模式摄像头闪一下就灭**（Git: `a0c174a`）：
+  - 根因：`useCamera` 每次渲染返回新对象 `{ stream, error, loading, stop }`，StudyPage 清理 effect 依赖了 `aiCam`/`selfieCam` 对象 → 每次渲染清理函数都执行 → `stop()` 把刚启动的流杀了
+  - 修复：`useCamera` 用 `useMemo` + `useCallback` 返回稳定引用；StudyPage 清理 effect 改为空依赖数组 `[]`，stop 函数通过 ref 持有，只在卸载时执行
 
 ## [未标记] — 2026-07-05
 
