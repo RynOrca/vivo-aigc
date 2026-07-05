@@ -138,21 +138,10 @@ export default function StatsPage({ onBack }) {
         </div>
       </div>
 
-      {/* 平均专注分 + 详情链接 — 模板原样 */}
-      <div className="flex justify-between items-center px-6 mb-6">
-        <div>
-          <h2 className="text-[64px] font-extrabold text-[#1a1a1a] leading-none tracking-tighter">{displayFocus}%</h2>
-          <p className="text-sm text-[#1a1a1a] font-bold">平均专注分</p>
-        </div>
-        <div className="text-center">
-          <button className="w-10 h-10 rounded-full border border-[#ccc] flex justify-center items-center mx-auto mb-2 hover:bg-gray-100 transition">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-              <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
-            </svg>
-          </button>
-          <p className="text-[13px] font-bold text-[#1a1a1a] cursor-pointer">详情</p>
-        </div>
+      {/* 平均专注分 */}
+      <div className="px-6 mb-6">
+        <h2 className="text-[64px] font-extrabold text-[#1a1a1a] leading-none tracking-tighter">{displayFocus}%</h2>
+        <p className="text-sm text-[#1a1a1a] font-bold">平均专注分</p>
       </div>
 
       {/* 折线图区域 — 完全复用模板的渐变 + SVG + 坐标轴 */}
