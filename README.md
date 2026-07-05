@@ -43,17 +43,40 @@ MVP 主流程：
 
 ## 启动方式
 
-当前 Task 0 阶段还没有实现复杂功能代码，因此暂不提供统一启动命令。
+### 快速启动（Mock 模式，推荐）
 
-后续建议：
-
-```text
-app/      前端开发者提供启动命令，例如 npm install && npm run dev
-backend/  后端开发者提供启动命令，例如 python main.py
-sensing/  感知开发者提供 Mock 运行命令，例如 python mock_generator.py
+```bash
+cd app && npm install && npm run dev
+# 浏览器打开输出的 Local URL（默认 http://localhost:5173）
 ```
 
-集成前，三个模块都必须支持 Mock 模式，并能使用 [docs/API.md](docs/API.md) 中的示例 JSON 单独调试。
+Demo 默认 Mock 模式，无需后端即可完整演示。
+
+### 完整模式（前端 + 真实后端）
+
+需要两个终端：
+
+```bash
+# 终端 1 — AI 后端（端口 8000）
+cd backend && npm install && npm start
+
+# 终端 2 — 前端
+cd app && npm run dev
+```
+
+在 App **设置页** 关闭 Mock Toggle 即走真实后端。
+
+### 独立验证
+
+```bash
+# 感知模块测试
+cd sensing && node test_sensing.js
+
+# 后端接口测试（后端启动后执行）
+cd backend && bash test_api.sh
+```
+
+详细环境搭建见 [ENVIRONMENT.md](ENVIRONMENT.md)。
 
 ## Mock 优先原则
 

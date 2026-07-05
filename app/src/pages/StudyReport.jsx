@@ -1,5 +1,5 @@
-import React from 'react'
-import { generateReport } from '../data/reportMock.js'
+import React, { useState, useEffect } from 'react'
+import { requestReport } from '../data/api.js'
 
 /** 格式化分钟 */
 function fmtMin(m) {
@@ -10,7 +10,47 @@ function fmtMin(m) {
 }
 
 export default function StudyReport({ totalMinutes, focusHistory, distractionCount, oralReview, onBackHome }) {
-  const report = generateReport({ totalMinutes, focusHistory, distractionCount, oralReview })
+  const [report, setReport] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const sessionId = `study_${Date.now().toString(36)}`
+    const avgFocus = focusHistory.length > 0
+      ? Math.round(focusHistory.reduce((a, b) => a + b, 0) / focusHistory.length)
+      : 78
+
+    setLoading(true)
+    requestReport(sessionId, {
+      totalMinutes,
+      effectiveMinutes: Math.round(totalMinutes * avgFocus / 100),
+      averageFocusScore: avgFocus,
+      maxFatigueScore: 60,
+      distractionCount,
+      oralReview,
+      focusCurve: focusHistory,
+    }).then((data) => {
+      setReport(data)
+      setLoading(false)
+    }).catch(() => {
+      setLoading(false)
+    })
+  }, [totalMinutes, focusHistory, distractionCount, oralReview])
+
+  if (loading || !report) {
+    return (
+      <div className="flex flex-col h-full bg-[#f7f8ec]">
+        <div className="bg-[#db7688] h-[130px] px-6 py-4 rounded-b-[40px] flex flex-col items-center justify-center gap-1">
+          <p className="text-white/70 text-sm">学习日报</p>
+          <p className="text-white text-[28px] font-extrabold tracking-wide leading-none">
+            正在生成...
+          </p>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-[#999] text-sm">AI 正在分析你的学习数据 ✨</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -18,7 +58,7 @@ export default function StudyReport({ totalMinutes, focusHistory, distractionCou
       <div className="bg-[#db7688] h-[130px] px-6 py-4 rounded-b-[40px] relative z-10 flex flex-col items-center justify-center gap-1">
         <p className="text-white/70 text-sm">学习日报</p>
         <p className="text-white text-[28px] font-extrabold tracking-wide leading-none">
-          {report.summary.slice(0, 12)}...
+          {report.summary?.slice(0, 12) || '今日总结'}...
         </p>
       </div>
 
@@ -90,7 +130,7 @@ export default function StudyReport({ totalMinutes, focusHistory, distractionCou
         {/* 建议 */}
         <div className="bg-white rounded-[22px] px-5 py-4 border border-[#e8ede3] mb-3">
           <p className="text-xs text-[#999] font-bold mb-2">💡 下次建议</p>
-          {report.suggestions.map((s, i) => (
+          {(report.suggestions || []).map((s, i) => (
             <div key={i} className="flex items-start gap-2 mb-1.5 last:mb-0">
               <span className="text-[#3f7b73] text-xs mt-0.5">◆</span>
               <p className="text-xs text-[#555] leading-relaxed">{s}</p>

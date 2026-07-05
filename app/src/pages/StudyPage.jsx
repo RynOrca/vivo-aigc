@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import ArcProgress from '../components/ArcProgress.jsx'
 import InterventionModal from '../components/InterventionModal.jsx'
+import { getStudyState, requestIntervention } from '../data/api.js'
 
-/*
- * ==== Task 2 / Task 3 集成时 ====
- * 替换下面两行为:
- *   import { getStudyState, requestIntervention } from '../data/api.js'
- * 并将 MOCK_MODE 改为 false（在 api.js 中）
+/**
+ * 专注学习页
+ *
+ * 数据源由 api.js 的 MOCK_MODE 控制：
+ *   - Mock 模式：本地生成 StudyState（默认）
+ *   - 真实模式：从后端 GET /api/study/state 获取
+ *
+ * 两种模式 UI 代码无需任何改动，切换由 Settings 页 Toggle 控制。
  */
-import { generateStudyState } from '../data/studyMock.js'
-import { generateIntervention } from '../data/interventionMock.js'
 
 function formatTime(totalSeconds) {
   const h = Math.floor(totalSeconds / 3600)
@@ -25,10 +27,14 @@ const distLabelMap = {
 
 export default function StudyPage({ onEndStudy }) {
   const [elapsed, setElapsed] = useState(0)
-  const [state, setState] = useState(() => generateStudyState(0))
+  const [state, setState] = useState(null)
   const [intervention, setIntervention] = useState(null)
   const [isPaused, setIsPaused] = useState(false)
   const [selfieMode, setSelfieMode] = useState(false)
+  const [sessionId] = useState(() => `study_${Date.now().toString(36)}`)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
   const timerRef = useRef(null)
   const prevLevelRef = useRef('NONE')
   const lastInterventionRef = useRef(0)
@@ -37,32 +43,65 @@ export default function StudyPage({ onEndStudy }) {
   const videoRef = useRef(null)
   const streamRef = useRef(null)
 
-  // 计时器
+  // 初始加载
   useEffect(() => {
-    if (isPaused) return
+    getStudyState(0, sessionId)
+      .then((s) => { setState(s); setLoading(false) })
+      .catch((e) => { setError(e.message); setLoading(false) })
+  }, [sessionId])
+
+  // 计时器 — 每 3 秒刷新一次状态
+  useEffect(() => {
+    if (isPaused || loading) return
     timerRef.current = setInterval(() => {
       setElapsed((prev) => {
         const next = prev + 1
+
+        // 每 3 秒更新一次 StudyState
         if (next % 3 === 0) {
-          setState((currentState) => {
-            const newState = generateStudyState(next)
-            if (next % 5 === 0) focusHistoryRef.current.push(newState.focusScore)
-            const prevLevel = prevLevelRef.current
-            const newLevel = newState.distractionLevel
-            if (newLevel !== 'NONE' && newLevel !== prevLevel && next - lastInterventionRef.current > 15) {
-              lastInterventionRef.current = next
-              setIntervention(generateIntervention(newState.sessionId, newLevel))
-            }
-            prevLevelRef.current = newLevel
-            distractionCountRef.current = newState.distractionCount
-            return newState
-          })
+          getStudyState(next, sessionId)
+            .then((newState) => {
+              setState(newState)
+
+              // 每 5 秒采样 focusScore
+              if (next % 5 === 0) {
+                focusHistoryRef.current.push(newState.focusScore)
+              }
+
+              // 检查是否需要触发干预（等级变化 + 15 秒冷却）
+              const prevLevel = prevLevelRef.current
+              const newLevel = newState.distractionLevel
+              if (
+                newLevel !== 'NONE' &&
+                newLevel !== prevLevel &&
+                next - lastInterventionRef.current > 15
+              ) {
+                lastInterventionRef.current = next
+                requestIntervention(sessionId, {
+                  distractionLevel: newLevel,
+                  focusScore: newState.focusScore,
+                  fatigueScore: newState.fatigueScore,
+                  triggerReason: defaultTriggerReason(newLevel),
+                }).then((event) => {
+                  if (event) setIntervention(event)
+                }).catch(() => {
+                  // 静默降级 — 不阻塞主流程
+                })
+              }
+              prevLevelRef.current = newLevel
+              distractionCountRef.current = newState.distractionCount
+            })
+            .catch(() => {
+              // 静默降级 — 保持使用上一次状态
+            })
         }
+
         return next
       })
     }, 1000)
+
     return () => clearInterval(timerRef.current)
-  }, [isPaused])
+  }, [isPaused, loading, sessionId])
 
   // 自拍模式 — 启停摄像头
   useEffect(() => {
@@ -100,7 +139,18 @@ export default function StudyPage({ onEndStudy }) {
     })
   }, [elapsed, onEndStudy])
 
-  const { focusScore, fatigueScore, distractionLevel, distractionCount } = state
+  // 加载中
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full bg-[#f7f8ec] items-center justify-center">
+        <div className="bg-[#db7688] h-[160px] w-full rounded-b-[40px] flex items-center justify-center">
+          <p className="text-white text-lg">加载中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const { focusScore = 0, fatigueScore = 0, distractionLevel = 'NONE', distractionCount = 0, emotion = 'focused' } = state || {}
 
   return (
     <>
@@ -132,8 +182,11 @@ export default function StudyPage({ onEndStudy }) {
         </p>
         {!selfieMode && (
           <p className="text-white/60 text-xs">
-            {distLabelMap[distractionLevel] || '正常'}
+            {distLabelMap[distractionLevel] || '正常'} · {emotionLabel(emotion)}
           </p>
+        )}
+        {error && (
+          <p className="text-yellow-200 text-[10px] mt-1">后端未连接，使用本地数据</p>
         )}
       </div>
 
@@ -144,7 +197,6 @@ export default function StudyPage({ onEndStudy }) {
             <h2 className="text-[32px] font-extrabold text-[#1a1a1a] leading-tight tracking-tight">
               学习状态
             </h2>
-            {/* 自拍模式开关 */}
             <button
               onClick={() => setSelfieMode(true)}
               className="flex items-center gap-1.5 bg-white rounded-full px-3 py-1.5 border border-[#ddd] text-xs text-[#999] hover:text-[#db7688] hover:border-[#db7688] transition"
@@ -188,7 +240,6 @@ export default function StudyPage({ onEndStudy }) {
       {/* ===== 自拍模式：左右浮动小窗 ===== */}
       {selfieMode && (
         <>
-          {/* 左 — 疲劳指数 */}
           <div className="absolute left-3 top-[120px] z-20 bg-white/85 backdrop-blur-sm rounded-[20px] px-3 py-2.5 shadow-lg border border-white/30 flex flex-col items-center gap-0.5 w-[65px]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#db7688" strokeWidth="2">
               <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
@@ -197,7 +248,6 @@ export default function StudyPage({ onEndStudy }) {
             <span className="text-[9px] text-[#999]">疲劳</span>
           </div>
 
-          {/* 右 — 分心次数 */}
           <div className="absolute right-3 top-[120px] z-20 bg-white/85 backdrop-blur-sm rounded-[20px] px-3 py-2.5 shadow-lg border border-white/30 flex flex-col items-center gap-0.5 w-[65px]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3f7b73" strokeWidth="2">
               <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
@@ -207,12 +257,10 @@ export default function StudyPage({ onEndStudy }) {
             <span className="text-[9px] text-[#999]">分心</span>
           </div>
 
-          {/* 分心状态标签 */}
           <div className="absolute top-[108px] left-1/2 -translate-x-1/2 z-20 bg-white/70 backdrop-blur-sm rounded-full px-3 py-0.5 text-[10px] text-[#555]">
             {distLabelMap[distractionLevel] || '正常'}
           </div>
 
-          {/* 退出自拍 */}
           <button
             onClick={() => setSelfieMode(false)}
             className="absolute top-[88px] right-3 z-20 w-7 h-7 bg-black/30 backdrop-blur-sm rounded-full flex justify-center items-center text-white text-xs"
@@ -231,9 +279,7 @@ export default function StudyPage({ onEndStudy }) {
               {focusScore > 70 ? '👍 状态不错，继续保持' : '💡 试着把注意力拉回来'}
             </p>
 
-            {/* 按钮组 */}
             <div className="flex items-center gap-4 mt-2">
-              {/* 暂停/继续 */}
               <button
                 className="w-14 h-14 bg-white/20 rounded-full flex justify-center items-center border-[4px] border-white/20 hover:scale-105 transition-transform active:scale-95 cursor-pointer"
                 onClick={() => setIsPaused(!isPaused)}
@@ -249,7 +295,6 @@ export default function StudyPage({ onEndStudy }) {
                 )}
               </button>
 
-              {/* 结束 */}
               <button
                 className="w-20 h-20 bg-[#db7688] rounded-full flex justify-center items-center border-[6px] border-white/20 hover:scale-105 transition-transform active:scale-95 cursor-pointer"
                 onClick={handleEndStudy}
@@ -270,7 +315,6 @@ export default function StudyPage({ onEndStudy }) {
       {/* ===== 自拍模式：底部按钮栏 ===== */}
       {selfieMode && (
         <div className="absolute bottom-0 left-0 w-full h-[120px] bg-gradient-to-t from-black/50 to-transparent z-20 flex items-end justify-center gap-6 pb-6">
-          {/* 暂停/继续 */}
           <button
             className="w-14 h-14 bg-white/25 backdrop-blur-sm rounded-full flex justify-center items-center border-2 border-white/30 hover:scale-105 transition-transform active:scale-95 cursor-pointer"
             onClick={() => setIsPaused(!isPaused)}
@@ -286,7 +330,6 @@ export default function StudyPage({ onEndStudy }) {
             )}
           </button>
 
-          {/* 结束 */}
           <button
             className="w-16 h-16 bg-[#db7688]/90 rounded-full flex justify-center items-center border-[4px] border-white/30 hover:scale-105 transition-transform active:scale-95 cursor-pointer"
             onClick={handleEndStudy}
@@ -305,4 +348,22 @@ export default function StudyPage({ onEndStudy }) {
       />
     </>
   )
+}
+
+// 干预触发原因
+function defaultTriggerReason(level) {
+  switch (level) {
+    case 'L1': return '视线偏离超过20秒'
+    case 'L2': return '连续分心超过60秒'
+    case 'L3': return '离座或严重分心'
+    default: return '状态变化'
+  }
+}
+
+// 情绪中文标签
+function emotionLabel(emotion) {
+  const map = {
+    calm: '平静', focused: '专注', tired: '疲劳', anxious: '焦虑', distracted: '分心',
+  }
+  return map[emotion] || emotion
 }

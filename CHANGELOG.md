@@ -1,5 +1,39 @@
 # CHANGELOG
 
+## [未标记] — 2026-07-05
+
+### Phase 8: 三模块联调 + 真实后端集成
+- **Git**: `dc05483` (backend) → `76afcb3` (sensing) → `Step3 commit` (前端集成)
+- **Task 2 感知模块**（`sensing/`）：
+  - `mockGenerator.js` — 200 秒场景循环，输出标准 StudyState
+  - `focusDetector.js` — focusScore 计算（视线偏离 + 闭眼 + 低头 + App 类型）
+  - `fatigueDetector.js` — fatigueScore 计算（时长增长 + 疲劳信号）
+  - `distractionDetector.js` — distractionLevel 四级判断（NONE/L1/L2/L3）
+  - `test_sensing.js` — 独立测试脚本，6 场景验证通过 ✅
+- **Task 3 AI 后端**（`backend/`）：
+  - Express 服务暴露 7 个标准接口（端口 8000）
+  - `routes/study.js` — 学习会话 CRUD
+  - `routes/ai.js` — 4 个 AI 接口（intervention / rest-chat / oral-review / report）
+  - `services/mockAI.js` — Mock 文案模板，与前端一致
+  - `services/vivoClient.js` — 蓝心 AI 客户端（AI_MOCK_MODE=false 启用，Key 从 .env 读取）
+  - `services/promptBuilder.js` — Prompt 集中管理（5 个 builder）
+  - `schemas/validate.js` — 请求体字段校验
+  - `.env.example` — 环境变量模板（**Key 不硬编码**）
+  - Mock/真实自动切换 + vivo 失败降级 ✅
+  - 所有 7 个接口已验证通过 ✅
+- **前端集成**（`app/src/`）：
+  - `data/api.js` 重构：MOCK_MODE 改为运行时变量，支持 setMockMode() 切换
+  - `data/mockAdapter.js` 新增：统一 Mock 导入入口（解决 Vite 跨目录 import 问题）
+  - `pages/StudyPage.jsx` — 通过 api.js 获取数据，解耦直接 Mock import
+  - `pages/RestChat.jsx` — 通过 requestRestChat 获取伴聊文案
+  - `pages/StudyReport.jsx` — 通过 requestReport 生成日报
+  - `pages/SettingsPage.jsx` — Mock Toggle 真正生效（实时切换数据源）
+  - 真实后端 + Mock 双模式切换验证通过 ✅
+- **工程化**：
+  - `ENVIRONMENT.md` — 环境搭建指南（供评委参考）
+  - `README.md` — 更新启动方式章节
+  - `CHANGELOG.md` — 记录 Phase 8
+
 ## [未标记] — 2026-07-02
 
 ### Phase 1: 项目骨架 + 首页 Dashboard

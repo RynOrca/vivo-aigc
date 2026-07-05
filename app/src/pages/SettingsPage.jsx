@@ -1,9 +1,16 @@
 import React, { useState } from 'react'
+import { MOCK_MODE, setMockMode } from '../data/api.js'
 
 export default function SettingsPage({ onBack }) {
   const [goalMinutes, setGoalMinutes] = useState(45)
   const [reminderLevel, setReminderLevel] = useState('medium')
-  const [mockMode, setMockMode] = useState(true)
+  const [mockMode, setLocalMockMode] = useState(MOCK_MODE)
+
+  const handleMockToggle = () => {
+    const next = !mockMode
+    setLocalMockMode(next)
+    setMockMode(next)  // 实时切换 api.js 数据源
+  }
 
   return (
     <div className="flex flex-col h-full bg-[#f7f8ec]">
@@ -79,17 +86,23 @@ export default function SettingsPage({ onBack }) {
 
         {/* Mock 模式 */}
         <div className="mb-5">
-          <p className="text-xs text-[#999] font-bold mb-3 uppercase tracking-wider">开发选项</p>
+          <p className="text-xs text-[#999] font-bold mb-3 uppercase tracking-wider">数据源模式</p>
           <div className="bg-white rounded-[22px] px-5 py-4 border border-[#e8ede3]">
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-sm text-[#1a1a1a] font-medium">Mock 模式</p>
-                <p className="text-xs text-[#999] mt-0.5">使用模拟数据演示</p>
+                <p className="text-sm text-[#1a1a1a] font-medium">
+                  {mockMode ? '本地 Mock' : '真实后端'}
+                </p>
+                <p className="text-xs text-[#999] mt-0.5">
+                  {mockMode
+                    ? '使用本地模拟数据，无需后端服务'
+                    : '连接 http://localhost:8000 后端'}
+                </p>
               </div>
               <button
-                onClick={() => setMockMode(!mockMode)}
+                onClick={handleMockToggle}
                 className={`w-12 h-7 rounded-full transition relative ${
-                  mockMode ? 'bg-[#3f7b73]' : 'bg-[#ddd]'
+                  mockMode ? 'bg-[#3f7b73]' : 'bg-[#db7688]'
                 }`}
               >
                 <div
@@ -109,6 +122,10 @@ export default function SettingsPage({ onBack }) {
             <div className="flex justify-between items-center px-5 py-3.5 border-b border-[#f0f0f0]">
               <span className="text-sm text-[#1a1a1a]">版本</span>
               <span className="text-sm text-[#999]">0.1.0 MVP</span>
+            </div>
+            <div className="flex justify-between items-center px-5 py-3.5 border-b border-[#f0f0f0]">
+              <span className="text-sm text-[#1a1a1a]">技术栈</span>
+              <span className="text-sm text-[#999]">React + Express</span>
             </div>
             <div className="flex justify-between items-center px-5 py-3.5">
               <span className="text-sm text-[#1a1a1a]">隐私说明</span>

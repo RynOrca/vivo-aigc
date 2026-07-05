@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { generateRestChat } from '../data/reportMock.js'
+import { requestRestChat } from '../data/api.js'
 
 /** 格式化秒数 */
 function formatCountdown(seconds) {
@@ -9,13 +9,34 @@ function formatCountdown(seconds) {
 }
 
 export default function RestChat({ totalMinutes, onComplete }) {
-  const restDataRef = useRef(generateRestChat(totalMinutes))
-  const restData = restDataRef.current
-  const [restSeconds, setRestSeconds] = useState(restData.restDuration * 60)
+  const [restData, setRestData] = useState(null)
+  const [restSeconds, setRestSeconds] = useState(0)
   const [userInput, setUserInput] = useState('')
+  const [loading, setLoading] = useState(true)
   const timerRef = useRef(null)
+  const sessionIdRef = useRef(`study_${Date.now().toString(36)}`)
 
+  // 加载 AI 伴聊数据
   useEffect(() => {
+    setLoading(true)
+    requestRestChat(sessionIdRef.current, {
+      sessionDuration: totalMinutes,
+      totalMinutes,
+      fatigueScore: 50,
+      userGoal: '考研英语阅读',
+      recentState: '学习结束',
+    }).then((data) => {
+      setRestData(data)
+      setRestSeconds((data.restDuration || 3) * 60)
+      setLoading(false)
+    }).catch(() => {
+      setLoading(false)
+    })
+  }, [totalMinutes])
+
+  // 倒计时
+  useEffect(() => {
+    if (loading) return
     timerRef.current = setInterval(() => {
       setRestSeconds((prev) => {
         if (prev <= 1) {
@@ -26,11 +47,21 @@ export default function RestChat({ totalMinutes, onComplete }) {
       })
     }, 1000)
     return () => clearInterval(timerRef.current)
-  }, [])
+  }, [loading])
 
   const handleSubmit = () => {
     const review = userInput.trim() || '今天学习感觉还可以'
     onComplete(review)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center bg-[#f7f8ec]">
+        <div className="bg-[#db7688] h-[140px] w-full rounded-b-[40px] flex items-center justify-center">
+          <p className="text-white text-lg">AI 伴聊加载中...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -53,10 +84,10 @@ export default function RestChat({ totalMinutes, onComplete }) {
             </div>
             <div>
               <p className="text-sm text-[#1a1a1a] leading-relaxed mb-3">
-                {restData.message}
+                {restData?.message || `你已经坚持了${totalMinutes}分钟，挺不容易的。现在可以先放松一下眼睛。`}
               </p>
               <div className="flex flex-wrap gap-2">
-                {restData.suggestedReplies.map((reply, i) => (
+                {(restData?.suggestedReplies || ['还可以', '有点累', '效率不错']).map((reply, i) => (
                   <button
                     key={i}
                     className="bg-white rounded-full px-4 py-1.5 text-xs text-[#3f7b73] border border-[#3f7b73]/20 hover:bg-[#3f7b73]/5 transition"
@@ -73,7 +104,7 @@ export default function RestChat({ totalMinutes, onComplete }) {
         {/* 复盘问题 */}
         <div className="bg-white rounded-[28px] px-5 py-4 border border-[#e8ede3] mb-3">
           <p className="text-sm font-bold text-[#1a1a1a] mb-3">
-            💬 {restData.question}
+            💬 {restData?.question || '用一句话说说，刚才这段时间你主要完成了什么？'}
           </p>
           <textarea
             className="w-full bg-[#f7f8ec] rounded-[16px] px-4 py-3 text-sm text-[#555] resize-none outline-none border border-transparent focus:border-[#db7688] transition"
