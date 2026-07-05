@@ -3,3 +3,28 @@ dist/
 .env
 .DS_Store
 *.log
+
+# Android
+*.apk
+*.aab
+*.keystore
+*.jks
+app/android/app/build/
+app/android/build/
+app/android/.gradle/
+app/android/local.properties
+app/android/app/release/
+
+# iOS
+app/ios/
+
+# 构建输出
+outputs/
+work/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
