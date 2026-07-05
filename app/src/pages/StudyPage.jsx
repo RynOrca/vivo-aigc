@@ -35,11 +35,15 @@ export default function StudyPage({ onEndStudy }) {
 
   // 自拍模式的 video（全屏显示）
   const selfieVideoRef = useRef(null)
-  const selfieCam = useCamera(selfieVideoRef, selfieMode, 'front')
+  const selfieCam = useCamera(selfieVideoRef, selfieMode, 'user')
 
   // AI 感知模式的视频（隐藏，仅用于截帧）
   const aiVideoRef = useRef(null)
-  const aiCam = useCamera(aiVideoRef, aiEnabled, 'front')
+  const aiCam = useCamera(aiVideoRef, aiEnabled, 'user')
+
+  // 稳定引用 — 避免 useAIAnalysis 内部 callback 重建
+  const getElapsed = useCallback(() => elapsed, [elapsed])
+  const handleIntervention = useCallback((evt) => setIntervention(evt), [])
 
   // AI 感知的分析 hook
   const ai = useAIAnalysis({
@@ -47,16 +51,16 @@ export default function StudyPage({ onEndStudy }) {
     paused: isPaused,
     videoRef: aiVideoRef,
     sessionId,
-    getElapsed: () => elapsed,
-    onIntervention: (evt) => setIntervention(evt),
+    getElapsed,
+    onIntervention: handleIntervention,
     captureIntervalMs: 3000,
     aggregateIntervalMs: 30000,
   })
 
-  // 初始加载
+  // 初始加载（预热 API，不依赖 AI 模块返回值）
   useEffect(() => {
     analyzeFace(sessionId, '', 0)
-      .then(r => { ai.displayState || null; setLoading(false) })
+      .then(() => setLoading(false))
       .catch(() => setLoading(false))
   }, [sessionId])
 
@@ -80,8 +84,7 @@ export default function StudyPage({ onEndStudy }) {
     const file = e.target.files[0]; if (!file) return
     const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file) })
     try {
-      const r = await analyzeFace(sessionId, b64, elapsed)
-      ai.displayState || null
+      await analyzeFace(sessionId, b64, elapsed)
     } catch (err) { console.warn('[StudyPage] upload analyze failed:', err.message) }
   }, [sessionId, elapsed])
 

@@ -2,6 +2,21 @@
 
 ## [未标记] — 2026-07-05
 
+### Bug 修复：AI 感知卡死 + 自拍模式黑屏
+- **Git**: `(待提交)`
+- **Bug 1 — 点击「启动 AI 感知」页面卡死**：
+  - 根因：`useAIAnalysis.js` 中 `useEffect` 依赖 `captureAndAnalyze` 和 `aggregate` callback，timer 每秒 tick 导致 callback 重建 → effect 重跑 → 无限 setState 循环
+  - 修复：用 `useRef` 持有 `getElapsed`/`onIntervention`/`sessionId`，timer 内通过 ref 读取最新值；`useEffect` 依赖项仅保留 `enabled`/`paused`/interval 参数
+  - Canvas 复用：截帧 canvas 只创建一次，避免每次截帧新建 DOM 元素
+- **Bug 2 — 自拍模式看不到画面**：
+  - 根因：`facingMode: 'front'` 不是 WebRTC 标准值（标准值为 `'user'`/`'environment'`）
+  - 修复：`useCamera.js` 默认参数和 `StudyPage.jsx` 调用处全部改为 `'user'`
+- **代码质量**：
+  - StudyPage 中 `getElapsed`/`onIntervention` 用 `useCallback` 包裹，保持引用稳定
+  - 移除初始加载 effect 中的无效代码（`ai.displayState || null`）
+
+## [未标记] — 2026-07-05
+
 ### Phase 10: 前端接入 AI 感知管线 + 完整可运行 Demo
 - **Git**: `a4d5e24` (前端) + docs commit (待做)
 - **StudyPage 重构**（核心改变）：

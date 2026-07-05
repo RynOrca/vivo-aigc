@@ -8,14 +8,14 @@
  *
  * @param {React.MutableRefObject} videoRef - <video> 元素的 ref
  * @param {boolean} enabled - 是否启用
- * @param {string} mode - 'front' | 'back'
+ * @param {string} mode - 'user' | 'environment' （WebRTC 标准 facingMode）
  * @returns {{ stream, error, loading, stop }}
  */
 import { useState, useEffect, useRef } from 'react'
 
 let _globalStreamId = 0
 
-export function useCamera(videoRef, enabled, mode = 'front') {
+export function useCamera(videoRef, enabled, mode = 'user') {
   const [stream, setStream] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
