@@ -30,6 +30,15 @@ export default function RestChat({ totalMinutes, onComplete }) {
       setRestSeconds((data.restDuration || 3) * 60)
       setLoading(false)
     }).catch(() => {
+      // 失败时设置 fallback 数据
+      setRestData({
+        sessionId: sessionIdRef.current,
+        message: '你已经坚持了 ' + totalMinutes + ' 分钟，辛苦了！今天感觉怎么样？',
+        suggestedReplies: ['比昨天好一点', '还可以', '有点累'],
+        question: '刚才学习中哪个部分最让你头疼？',
+        restDuration: 3,
+      })
+      setRestSeconds(3 * 60)
       setLoading(false)
     })
   }, [totalMinutes])

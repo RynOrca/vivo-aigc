@@ -32,6 +32,22 @@ export default function StudyReport({ totalMinutes, focusHistory, distractionCou
       setReport(data)
       setLoading(false)
     }).catch(() => {
+      // 失败时设置 fallback 数据，避免一直显示 "AI 正在分析"
+      setReport({
+        sessionId,
+        totalMinutes,
+        effectiveMinutes: Math.round(totalMinutes * (avgFocus || 70) / 100),
+        averageFocusScore: avgFocus,
+        maxFatigueScore: 60,
+        distractionCount,
+        focusCurve: focusHistory,
+        oralReview,
+        summary: '今天学习状态中等，有波动。',
+        advantage: '能坚持完成学习时长。',
+        problem: '可以尝试减少外部干扰。',
+        suggestions: ['下次可以把任务拆成 25 分钟单元', '学习前手机静音放到一旁'],
+        encouragement: '每一步都是进步，明天继续加油！',
+      })
       setLoading(false)
     })
   }, [totalMinutes, focusHistory, distractionCount, oralReview])
