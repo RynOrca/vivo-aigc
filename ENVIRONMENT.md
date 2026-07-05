@@ -61,18 +61,58 @@ Demo 默认 **Mock 模式**，即使不启动后端也能完整演示全部功�
 - 开启（绿色）= 本地 Mock，无需任何后端服务
 - 关闭（珊瑚色）= 真实后端，需先启动 `npm start`
 
-## 复赛后端（蓝心 AI）
+## 多模型接入（Phase 9）
 
-后端默认走本地 Mock 文案（稳定性优先）。如需使用真实的蓝心 AI：
+后端支持 3 个 Provider，通过 `.env` 的 `DEFAULT_MODEL_PROVIDER` 切换：
+
+| Provider | 用途 | 模型 | Key 申请 |
+|---|---|---|---|
+| `deepseek`（默认） | 文本 4 接口 + 日报 JSON Mode | `deepseek-chat` | https://platform.deepseek.com （注册送 500 万 Token） |
+| `vivo`（备选） | 蓝心 AI 原方案 | `blue-lm-v-3b` | https://aigc.vivo.com.cn |
+| `qewn` | 识图（面部感知） | `qwen-vl-plus` | https://llm-dm4c0m7ddxaxtw51.cn-beijing.maas.aliyuncs.com |
+
+### 方式 A：Mock 模式（默认，评委首选）
+
+```bash
+cd app && npm run dev
+# 无需任何 Key，6 大页面 + 6 场景演示完整闭环
+```
+
+### 方式 B：接入真实 DeepSeek（推荐）
 
 ```bash
 cd backend
 cp .env.example .env
-# 编辑 .env，设置 AI_MOCK_MODE=false
-# 并确认 VIVO_API_KEY 已填入
+# 默认已配好 DEEPSEEK_API_KEY（公开测试 Key），只需把 AI_MOCK_MODE 改成 false
+# AI_MOCK_MODE=false
+# DEFAULT_MODEL_PROVIDER=deepseek
+npm start
+```
+
+### 方式 C：接入蓝心 AI 备选方案
+
+```bash
+cd backend
+cp .env.example .env
+# 取消 VIVO_* 字段注释，并设置：
+# AI_MOCK_MODE=false
+# DEFAULT_MODEL_PROVIDER=vivo
+npm start
 ```
 
 蓝心 AI 接入文档：https://aigc.vivo.com.cn/#/document/index?id=1677
+
+### 方式 D：全真实 AI 感知管线（face analyze-face）
+
+```bash
+# 在 .env 中确保 DEEPSEEK_API_KEY 和 QEWN_API_KEY 都已填入
+# AI_MOCK_MODE=false
+cd backend && npm start
+
+# 用 curl 测试：先创建学习会话，再 POST 一张真实人脸照片 URL 给 /api/ai/analyze-face
+```
+
+这一步会走 Qwen-VL 识别人脸 → DeepSeek 校准专注分数 → 生成干预事件 完整管线。
 
 ## 目录结构速览
 

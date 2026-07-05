@@ -2,6 +2,51 @@
 
 ## [未标记] — 2026-07-05
 
+### Phase 9: 多模型接入 + AI 驱动感知管线
+- **Git**: `3c517d1` (代码) + docs commit (待做)
+- **技术亮点 — 识图不是拍题，而是感知疲劳/分心**：
+  - 传统做法：前端 Mock 规则按"时间"触发 L1/L2/L3
+  - 本方案：前置摄像头拍照 → Qwen-VL 读面部特征 → DeepSeek 数值校准 → 触发干预
+  - 策划书原设想是规则版（`focus_detector.py`），复赛重构升级为 AI 感知版
+
+- **多 Provider 架构**（`backend/services/llmClient.js` 新增）：
+  - Provider：`deepseek`（主力）/ `vivo`（备选）/ `qewn`（识图）
+  - 能力：`chatCompletion`（文本 4 接口）/ `visionCompletion`（识图）
+  - 统一入口：按 `DEFAULT_MODEL_PROVIDER` 环境变量自动路由
+  - `isAvailable(kind)` 探测 + `getProviderStatus()` 健康检查展示
+  - OpenAI 兼容协议，所有 Key 从 `.env` 读取，不硬编码
+
+- **面部感知管线** (`backend/routes/face.js` 新增 `/api/ai/analyze-face`)：
+  - Step 1：Qwen-VL 读面部**粗分类字段**（eyeClosedRatio / gazeDirection / gazeAwaySeconds / headYawDeg / headPitchDeg / mouthOpen / isUserPresent / faceCount / currentAppType）
+  - Step 2：DeepSeek 接收粗分类 + 学习上下文（已学习秒数、历史专注分、最近分心次数）→ 数值校准 → 输出标准 `StudyState`
+  - 与前端 Mock Schema 字段名**完全对齐** → 前端无感知切换
+  - Mock 模式走快速演示分支（不需要 Key）/ 真实模式走 Qwen-VL + DeepSeek 端到端管线
+
+- **Face 粗分类 → 数值校准 Prompt**（`backend/services/deepseekPrompts.js`）：
+  - `buildFaceStatePrompt`：给 DeepSeek 的详细计算规则（闭眼扣多少分、低头扣多少、分心级别映射）
+  - `buildReportPrompt`：日报专用 Prompt，启用 DeepSeek `response_format: json_object` JSON Mode 稳定输出
+  - 字段 whitelist：summary/advantage/problem/suggestions/encouragement
+
+- **ai.js 改造**：
+  - `vivoClient` → `llmClient`，所有接口走多 Provider 路由
+  - 日报接口强制启用 JSON Mode + 字段 whitelist 过滤干预
+  - fallback 逻辑保留（失败自动降级 Mock）
+
+- **study.js 改造**：
+  - `export const sessions` Map → 供 `face.js` 跨路由共享学习上下文（elapsed / focusScores）
+
+- **.env.example 重写**：
+  - `VIVO_*` 字段重命名为 `DEEPSEEK_*`，蓝心原方案保留在注释
+  - 新增 `QEWN_*`（qwen-vl-plus 识图）+ `DEFAULT_MODEL_PROVIDER` 全局切换器
+
+- **测试验证通过** ✅：
+  - `/api/health` 返回 Provider 状态（deepseek/vivo/qewn available）
+  - intervention（Mock + DeepSeek 真调用两条路径）
+  - report（Mock + DeepSeek JSON Mode 结构化输出，5 字段全齐）
+  - analyze-face（Mock 分支 12 字段 + QwenVL+DeepSeek 真实管线端到端）
+
+## [未标记] — 2026-07-05
+
 ### Phase 8: 三模块联调 + 真实后端集成
 - **Git**: `dc05483` (backend) → `76afcb3` (sensing) → `Step3 commit` (前端集成)
 - **Task 2 感知模块**（`sensing/`）：
