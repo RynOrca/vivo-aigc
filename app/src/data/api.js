@@ -171,6 +171,115 @@ export async function endStudy(data) {
   })
 }
 
+/**
+ * 分析面部照片 — POST /api/ai/analyze-face
+ *
+ * Mock 模式（默认）：本地生成 faceFeatures + 简单规则算出 studyState
+ * 真实模式：上传 base64 到后端，走 Qwen-VL + DeepSeek 管线
+ *
+ * 返回完整包：
+ *   { faceFeatures, studyState, intervention }
+ *   - faceFeatures: 12 个粗分类字段（闭眼占比/视线方向/头部偏角等）
+ *   - studyState: 标准 StudyState 结构（与 Mock Schema 字段名完全对齐）
+ *   - intervention: 如果 distractionLevel != NONE，附带触发事件；否则 null
+ *
+ * @param {string} sessionId
+ * @param {string} imageBase64 - data:image/jpeg;base64,... 格式
+ * @param {number} [elapsedSeconds] - 已学习秒数（Mock 分支用于模拟疲劳曲线）
+ * @returns {Promise<{ faceFeatures: object, studyState: object, intervention: object|null }>}
+ */
+export async function analyzeFace(sessionId, imageBase64, elapsedSeconds = 0) {
+  if (MOCK_MODE) {
+    return generateMockFaceAnalysis(sessionId, elapsedSeconds)
+  }
+  return apiCall('/api/ai/analyze-face', {
+    method: 'POST',
+    body: JSON.stringify({ sessionId, image: { base64: imageBase64 } }),
+  })
+}
+
+/**
+ * Mock 模式：生成面部粗分类 + 数值
+ *
+ * 模拟一段随时间缓慢下滑的专注曲线（10 分钟后开始疲劳）
+ * 返回 faceFeatures / studyState / intervention 完整包
+ */
+function generateMockFaceAnalysis(sessionId, elapsed) {
+  const fatigued = Math.min(1, elapsed / 600) // 10 分钟后达到最大疲劳
+  const baseFocus = 85 - fatigued * 40
+  const focusScore = Math.round(baseFocus + (Math.random() * 10 - 5))
+  const fatigueScore = Math.round(20 + fatigued * 50 + Math.random() * 10)
+  const eyeClosedRatio = parseFloat((fatigued * 0.3 + Math.random() * 0.05).toFixed(2))
+  const gazeAwaySeconds = Math.floor(Math.random() * 15 + fatigued * 30)
+  const gazeDirection = gazeAwaySeconds > 15
+    ? ['left', 'right'][Math.floor(Math.random() * 2)]
+    : 'center'
+  const headYawDeg = parseFloat(((Math.random() * 20 - 10) * (fatigued + 0.3)).toFixed(1))
+
+  let distractionLevel = 'NONE'
+  if (gazeAwaySeconds >= 60 || focusScore < 50) distractionLevel = 'L2'
+  else if (gazeAwaySeconds >= 20 || focusScore < 70) distractionLevel = 'L1'
+
+  let emotion = 'calm'
+  if (fatigueScore >= 60) emotion = 'tired'
+  else if (distractionLevel === 'L2' || distractionLevel === 'L3') emotion = 'distracted'
+
+  const faceFeatures = {
+    isUserPresent: true,
+    faceCount: 1,
+    eyeClosedRatio,
+    gazeDirection,
+    gazeAwaySeconds,
+    headDown: Math.random() < fatigued,
+    headDownSeconds: Math.floor(Math.random() * 10 * fatigued),
+    headYawDeg,
+    headPitchDeg: parseFloat((Math.random() * 5 - 2).toFixed(1)),
+    mouthOpen: Math.random() < fatigued * 0.3,
+    mouthOpenCount: Math.floor(Math.random() * fatigued * 3),
+    currentAppType: 'study',
+  }
+
+  const studyState = {
+    sessionId,
+    timestamp: Math.floor(Date.now() / 1000),
+    elapsedSeconds: elapsed,
+    focusScore: Math.max(0, Math.min(100, focusScore)),
+    fatigueScore: Math.max(0, Math.min(100, fatigueScore)),
+    distractionLevel,
+    emotion,
+    currentScene: 'study',
+    isUserPresent: true,
+    headDownSeconds: faceFeatures.headDownSeconds,
+    eyeClosedRatio,
+    gazeAwaySeconds,
+    mouthOpenCount: faceFeatures.mouthOpenCount,
+    currentAppType: 'study',
+    distractionCount: Math.floor(elapsed / 120),
+    triggerReason: distractionLevel !== 'NONE' ? `视线偏离${gazeAwaySeconds}秒` : null,
+  }
+
+  let intervention = null
+  if (distractionLevel !== 'NONE') {
+    intervention = {
+      eventId: `evt_${Date.now().toString(36)}`,
+      sessionId,
+      level: distractionLevel,
+      type: distractionLevel === 'L1' ? 'TEXT' : distractionLevel === 'L2' ? 'VOICE' : 'POPUP',
+      title: `${distractionLevel} 提醒`,
+      message: distractionLevel === 'L1'
+        ? '眼睛离开屏幕有点久了，回到当前题目上吧 🙂'
+        : distractionLevel === 'L2'
+          ? '你已经分心一小会儿了，先把注意力拉回当前这一步吧。'
+          : '看起来当前状态不太好，硬撑效果有限。建议休息 5 分钟。',
+      action: '回到当前任务',
+      triggerReason: `视线偏离${gazeAwaySeconds}秒`,
+      timestamp: Math.floor(Date.now() / 1000),
+    }
+  }
+
+  return { faceFeatures, studyState, intervention }
+}
+
 export default {
   MOCK_MODE,
   BASE_URL,
@@ -182,4 +291,5 @@ export default {
   requestOralReview,
   startStudy,
   endStudy,
+  analyzeFace,
 }
