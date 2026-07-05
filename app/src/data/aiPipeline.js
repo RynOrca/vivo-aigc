@@ -296,6 +296,117 @@ export async function analyzeFaceDirect(base64, ctx = {}) {
   return { faceFeatures, studyState, intervention }
 }
 
+// ===== DeepSeek 报告生成 =====
+
+const REPORT_SYSTEM_PROMPT = `你是一个富有同理心的学习教练。根据用户的学习数据，生成学习日报。
+严格输出 JSON，不要任何解释。`
+
+function buildReportPrompt(data) {
+  const focusList = (data.focusCurve || []).join(', ') || '无数据'
+  return `根据以下学习数据，生成一份学习日报（JSON 格式）：
+
+=== 学习数据 ===
+- 总学习时长：${data.totalMinutes || 0} 分钟
+- 有效学习时长：${data.effectiveMinutes || 0} 分钟
+- 平均专注分：${data.averageFocusScore || 75}
+- 分心次数：${data.distractionCount || 0}
+- 专注分曲线（每 5s 采样）：${focusList}
+- 用户复盘：${data.oralReview || '无'}
+
+=== 输出 JSON ===
+{
+  "summary": "一句话总结（12字以内）",
+  "advantage": "今天做得好的地方（30字以内）",
+  "problem": "需要优化的问题（30字以内）",
+  "suggestions": ["建议1（15字以内）", "建议2（15字以内）"],
+  "encouragement": "一句鼓励语（20字以内）"
+}`
+}
+
+/**
+ * 直连 DeepSeek 生成学习日报
+ * @param {object} data - { totalMinutes, effectiveMinutes, averageFocusScore, distractionCount, focusCurve, oralReview }
+ * @returns {Promise<object>} - 完整报告对象
+ */
+export async function generateReportDirect(data) {
+  const key = getDeepseekKey()
+  const url = getDeepseekUrl()
+
+  const raw = await openaiFetch(url, key, {
+    model: DEEPSEEK_DEFAULT_MODEL,
+    messages: [
+      { role: 'system', content: REPORT_SYSTEM_PROMPT },
+      { role: 'user', content: buildReportPrompt(data) },
+    ],
+    response_format: { type: 'json_object' },
+    max_tokens: 512,
+  })
+
+  const ai = parseJson(raw)
+
+  return {
+    sessionId: data.sessionId || 'study_001',
+    totalMinutes: data.totalMinutes || 0,
+    effectiveMinutes: data.effectiveMinutes || 0,
+    averageFocusScore: data.averageFocusScore || 75,
+    maxFatigueScore: data.maxFatigueScore || 50,
+    distractionCount: data.distractionCount || 0,
+    focusCurve: data.focusCurve || [],
+    oralReview: data.oralReview || '',
+    summary: ai.summary || '今日学习完成',
+    advantage: ai.advantage || '坚持完成了学习任务',
+    problem: ai.problem || '可以尝试减少干扰',
+    suggestions: Array.isArray(ai.suggestions) ? ai.suggestions : ['尝试番茄钟工作法', '学习时手机静音'],
+    encouragement: ai.encouragement || '每一步都是进步，继续加油！',
+  }
+}
+
+// ===== DeepSeek 休息伴聊 =====
+
+const REST_SYSTEM_PROMPT = `你是一个体贴的学习伙伴。学习刚结束，请用温暖的口吻关怀用户。
+严格输出 JSON，不要任何解释。`
+
+function buildRestPrompt(data) {
+  return `用户刚完成 ${data.totalMinutes || 0} 分钟的学习，请生成休息伴聊内容：
+
+=== 输出 JSON ===
+{
+  "message": "一句关怀语（40字以内，温暖鼓励）",
+  "suggestedReplies": ["快捷回复1", "快捷回复2", "快捷回复3"],
+  "question": "一个引导复盘的问题（20字以内）"
+}`
+}
+
+/**
+ * 直连 DeepSeek 生成休息伴聊
+ * @param {object} data - { totalMinutes, fatigueScore, userGoal }
+ * @returns {Promise<object>}
+ */
+export async function generateRestChatDirect(data) {
+  const key = getDeepseekKey()
+  const url = getDeepseekUrl()
+
+  const raw = await openaiFetch(url, key, {
+    model: DEEPSEEK_DEFAULT_MODEL,
+    messages: [
+      { role: 'system', content: REST_SYSTEM_PROMPT },
+      { role: 'user', content: buildRestPrompt(data) },
+    ],
+    response_format: { type: 'json_object' },
+    max_tokens: 256,
+  })
+
+  const ai = parseJson(raw)
+
+  return {
+    sessionId: data.sessionId || 'study_001',
+    message: ai.message || `辛苦了！${data.totalMinutes || 0} 分钟的学习不容易。`,
+    suggestedReplies: Array.isArray(ai.suggestedReplies) ? ai.suggestedReplies : ['还可以', '有点累', '效率不错'],
+    question: ai.question || '刚才学习中哪个部分最难？',
+    restDuration: data.restDuration || 3,
+  }
+}
+
 // ===== API 连通性测试 =====
 
 /**

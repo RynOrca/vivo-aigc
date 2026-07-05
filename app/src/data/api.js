@@ -19,7 +19,7 @@
 import { generateStudyState, generateIntervention, generateRestChat, generateReport } from './mockAdapter.js'
 
 // 嵌入式 AI 管线（直连 Qwen-VL + DeepSeek，无需后端）
-import { analyzeFaceDirect } from './aiPipeline.js'
+import { analyzeFaceDirect, generateReportDirect, generateRestChatDirect } from './aiPipeline.js'
 
 // ===== 配置 =====
 
@@ -120,11 +120,23 @@ export async function requestIntervention(sessionId, state) {
 /**
  * 获取休息伴聊文案 — Task 3 AI 服务
  * Mock: 本地模板   真实: POST /api/ai/rest-chat
+ * 直连: DeepSeek 直接生成
  * @param {string} sessionId
  * @param {object} data - { sessionDuration, userGoal, fatigueScore, recentState }
  */
 export async function requestRestChat(sessionId, data) {
   if (MOCK_MODE) return generateRestChat(data.totalMinutes || data.sessionDuration)
+
+  // 直连模式：DeepSeek 直接生成伴聊
+  if (DIRECT_MODE) {
+    try {
+      return await generateRestChatDirect({ sessionId, ...data })
+    } catch (err) {
+      console.warn('[API] 直连伴聊生成失败，降级本地模板:', err.message)
+      return generateRestChat(data.totalMinutes || data.sessionDuration)
+    }
+  }
+
   return apiCall('/api/ai/rest-chat', {
     method: 'POST',
     body: JSON.stringify({ sessionId, ...data }),
@@ -134,11 +146,23 @@ export async function requestRestChat(sessionId, data) {
 /**
  * 生成学习日报 — Task 3 AI 服务
  * Mock: 本地计算   真实: POST /api/ai/report
+ * 直连: DeepSeek 直接生成
  * @param {string} sessionId
  * @param {object} data - StudyReport 所需全部字段
  */
 export async function requestReport(sessionId, data) {
   if (MOCK_MODE) return generateReport(data)
+
+  // 直连模式：DeepSeek 直接生成报告
+  if (DIRECT_MODE) {
+    try {
+      return await generateReportDirect({ sessionId, ...data })
+    } catch (err) {
+      console.warn('[API] 直连报告生成失败，降级本地模板:', err.message)
+      return generateReport({ ...data, sessionId })
+    }
+  }
+
   return apiCall('/api/ai/report', {
     method: 'POST',
     body: JSON.stringify({ sessionId, ...data }),
