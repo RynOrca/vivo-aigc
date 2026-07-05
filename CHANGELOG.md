@@ -2,6 +2,14 @@
 
 ## [未标记] — 2026-07-06
 
+### 修复 CORS 导致 APK 上 API 连通性测试失败
+- **Git**: `最新提交`
+- **根因**：阿里云 MAAS API (`llm-dm4c0m7ddxaxtw51.cn-beijing.maas.aliyuncs.com`) **不返回 `Access-Control-Allow-Origin` 头**，浏览器/WebView 的 `fetch()` 被 CORS 策略拦截
+  - PC 开发能工作是因为走了 Vite/后端代理（无 CORS）
+  - APK 前端直连 → CORS 拦截 → 捕获异常 → 静默降级 Mock → 用户看到随机数据
+- **修复**：`aiPipeline.js` 在 APK 环境 (`window.Capacitor`) 下使用 `CapacitorHttp.request()`（原生 HTTP、无 CORS 限制），Web 环境继续用 `fetch`
+- **验证**：终端 curl 测试 API Key `sk-ws-H.RXXYXYY...` 返回 HTTP 200（0.67s），确认 Key 有效
+
 ### 修复 AI 管线静默降级 + API 连通性测试
 - **Git**: `7e9281e`
 - **问题**：APK 上开启直连 AI 模式、关闭 Mock，数据仍是随机生成的
