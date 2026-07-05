@@ -18,11 +18,36 @@
 // Mock 模式下使用前端内置 Mock 数据（与 sensing/mockGenerator.js 算法一致）
 import { generateStudyState, generateIntervention, generateRestChat, generateReport } from './mockAdapter.js'
 
+// 嵌入式 AI 管线（直连 Qwen-VL + DeepSeek，无需后端）
+import { analyzeFaceDirect } from './aiPipeline.js'
+
 // ===== 配置 =====
 
 // 使用 let 而非 const，支持运行时切换（Settings 页 Toggle 生效关键）
 export let MOCK_MODE = true
-export const BASE_URL = 'http://localhost:8000'
+
+// 直连模式：跳过后端，前端直接调用 Qwen-VL + DeepSeek API（APK 默认启用）
+export let DIRECT_MODE = typeof window !== 'undefined' && !!(window.Capacitor || window.__capacitor)
+
+/** 运行时切换直连模式 */
+export function setDirectMode(value) {
+  DIRECT_MODE = value
+  console.log('[API] 直连 AI 模式:', value ? 'ON' : 'OFF')
+}
+
+// 后端地址：APK 模式默认不走后端，但保留配置
+const STORAGE_KEY = 'vivo_aigc_backend_url'
+const savedUrl = (() => {
+  try { return localStorage.getItem(STORAGE_KEY) } catch (_) { return null }
+})()
+export let BASE_URL = savedUrl || 'http://localhost:8000'
+
+/** 运行时修改后端地址 */
+export function setBackendUrl(url) {
+  BASE_URL = url.replace(/\/+$/, '')
+  try { localStorage.setItem(STORAGE_KEY, BASE_URL) } catch (_) { /* noop */ }
+  console.log('[API] 后端地址切换为:', BASE_URL)
+}
 
 /**
  * 运行时切换 Mock 模式（由 Settings 页 Toggle 调用）
@@ -186,14 +211,41 @@ export async function endStudy(data) {
  * @param {number} [elapsedSeconds] - 已学习秒数（Mock 分支用于模拟疲劳曲线）
  * @returns {Promise<{ faceFeatures: object, studyState: object, intervention: object|null }>}
  */
+// analyzeFace 上下文（跟踪分心次数等）
+const _faceCtx = {}
+
 export async function analyzeFace(sessionId, imageBase64, elapsedSeconds = 0) {
   if (MOCK_MODE) {
     return generateMockFaceAnalysis(sessionId, elapsedSeconds)
   }
-  // 空图片不调后端（预热/降级场景）
+  // 空图片走本地 Mock
   if (!imageBase64 || imageBase64.length < 100) {
     return generateMockFaceAnalysis(sessionId, elapsedSeconds)
   }
+
+  // 直连模式：前端直接调 Qwen-VL + DeepSeek（APK 默认）
+  if (DIRECT_MODE) {
+    try {
+      if (!_faceCtx[sessionId]) _faceCtx[sessionId] = { distractionCount: 0, focusScores: [] }
+      const ctx = _faceCtx[sessionId]
+      ctx.elapsedSeconds = elapsedSeconds
+      ctx.sessionId = sessionId
+
+      const result = await analyzeFaceDirect(imageBase64, ctx)
+
+      // 同步前端本地状态
+      ctx.distractionCount = result.studyState.distractionCount
+      ctx.focusScores.push(result.studyState.focusScore)
+      if (ctx.focusScores.length > 30) ctx.focusScores.shift()
+
+      return result
+    } catch (err) {
+      console.warn('[API] 直连 AI 失败，降级本地 Mock:', err.message)
+      return generateMockFaceAnalysis(sessionId, elapsedSeconds)
+    }
+  }
+
+  // 后端模式
   try {
     return await apiCall('/api/ai/analyze-face', {
       method: 'POST',

@@ -1,16 +1,27 @@
 import React, { useState } from 'react'
-import { MOCK_MODE, setMockMode } from '../data/api.js'
+import { MOCK_MODE, setMockMode, DIRECT_MODE, setDirectMode } from '../data/api.js'
+import { getQewnKey, setQewnKey, getDeepseekKey, setDeepseekKey } from '../data/aiPipeline.js'
 
 export default function SettingsPage({ onBack }) {
   const [goalMinutes, setGoalMinutes] = useState(45)
   const [reminderLevel, setReminderLevel] = useState('medium')
   const [mockMode, setLocalMockMode] = useState(MOCK_MODE)
+  const [directMode, setLocalDirectMode] = useState(DIRECT_MODE)
+  const [qewnKey, setLocalQewnKey] = useState(getQewnKey)
+  const [deepseekKey, setLocalDeepseekKey] = useState(getDeepseekKey)
 
   const handleMockToggle = () => {
     const next = !mockMode
     setLocalMockMode(next)
-    setMockMode(next)  // 实时切换 api.js 数据源
+    setMockMode(next)
   }
+  const handleDirectToggle = () => {
+    const next = !directMode
+    setLocalDirectMode(next)
+    setDirectMode(next)
+  }
+  const handleQewnSave = () => { setQewnKey(qewnKey); alert('Qwen-VL Key 已保存') }
+  const handleDSSave = () => { setDeepseekKey(deepseekKey); alert('DeepSeek Key 已保存') }
 
   return (
     <div className="flex flex-col h-full bg-[#f7f8ec]">
@@ -84,33 +95,54 @@ export default function SettingsPage({ onBack }) {
           </div>
         </div>
 
-        {/* Mock 模式 */}
+        {/* 直连 AI 模式（APK 默认） */}
         <div className="mb-5">
-          <p className="text-xs text-[#999] font-bold mb-3 uppercase tracking-wider">数据源模式</p>
-          <div className="bg-white rounded-[22px] px-5 py-4 border border-[#e8ede3]">
-            <div className="flex justify-between items-center">
+          <p className="text-xs text-[#999] font-bold mb-3 uppercase tracking-wider">AI 连接模式</p>
+          <div className="bg-white rounded-[22px] border border-[#e8ede3] overflow-hidden">
+            <div className="flex justify-between items-center px-5 py-3.5 border-b border-[#f0f0f0]">
               <div>
-                <p className="text-sm text-[#1a1a1a] font-medium">
-                  {mockMode ? '本地 Mock' : '真实后端'}
-                </p>
-                <p className="text-xs text-[#999] mt-0.5">
-                  {mockMode
-                    ? '使用本地模拟数据，无需后端服务'
-                    : '连接 http://localhost:8000 后端'}
-                </p>
+                <p className="text-sm text-[#1a1a1a] font-medium">直连 AI</p>
+                <p className="text-xs text-[#999] mt-0.5">前端直调 Qwen-VL + DeepSeek（无需后端）</p>
+              </div>
+              <button
+                onClick={handleDirectToggle}
+                className={`w-12 h-7 rounded-full transition relative ${directMode ? 'bg-[#3f7b73]' : 'bg-[#ccc]'}`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full absolute top-1 shadow transition-transform ${directMode ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+            <div className="flex justify-between items-center px-5 py-3.5">
+              <div>
+                <p className="text-sm text-[#1a1a1a] font-medium">本地 Mock</p>
+                <p className="text-xs text-[#999] mt-0.5">使用本地模拟数据</p>
               </div>
               <button
                 onClick={handleMockToggle}
-                className={`w-12 h-7 rounded-full transition relative ${
-                  mockMode ? 'bg-[#3f7b73]' : 'bg-[#db7688]'
-                }`}
+                className={`w-12 h-7 rounded-full transition relative ${mockMode ? 'bg-[#3f7b73]' : 'bg-[#db7688]'}`}
               >
-                <div
-                  className={`w-5 h-5 bg-white rounded-full absolute top-1 shadow transition-transform ${
-                    mockMode ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
+                <div className={`w-5 h-5 bg-white rounded-full absolute top-1 shadow transition-transform ${mockMode ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* API Keys */}
+        <div className="mb-5">
+          <p className="text-xs text-[#999] font-bold mb-3 uppercase tracking-wider">API Keys（直连模式用）</p>
+          <div className="bg-white rounded-[22px] px-5 py-4 border border-[#e8ede3]">
+            <p className="text-xs text-[#999] mb-2">Qwen-VL Key（阿里云百炼）</p>
+            <div className="flex gap-2 mb-3">
+              <input type="password" value={qewnKey} onChange={(e) => setLocalQewnKey(e.target.value)}
+                placeholder="sk-ws-H.xxx" className="flex-1 text-xs px-3 py-2 rounded-full border border-[#ddd] outline-none focus:border-[#db7688]" />
+              <button onClick={handleQewnSave}
+                className="bg-[#db7688] text-white text-xs px-3 py-2 rounded-full font-bold shrink-0">保存</button>
+            </div>
+            <p className="text-xs text-[#999] mb-2">DeepSeek Key</p>
+            <div className="flex gap-2">
+              <input type="password" value={deepseekKey} onChange={(e) => setLocalDeepseekKey(e.target.value)}
+                placeholder="sk-xxx" className="flex-1 text-xs px-3 py-2 rounded-full border border-[#ddd] outline-none focus:border-[#db7688]" />
+              <button onClick={handleDSSave}
+                className="bg-[#3f7b73] text-white text-xs px-3 py-2 rounded-full font-bold shrink-0">保存</button>
             </div>
           </div>
         </div>

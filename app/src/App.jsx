@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import PhoneFrame from './components/PhoneFrame.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import StudyPage from './pages/StudyPage.jsx'
@@ -7,6 +7,9 @@ import StudyReport from './pages/StudyReport.jsx'
 import StatsPage from './pages/StatsPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import { useAppState } from './data/AppContext.jsx'
+
+// 检测是否在 Capacitor 原生环境中运行
+const isNative = typeof window !== 'undefined' && !!(window.Capacitor || window.__capacitor)
 
 export default function App() {
   const { completeSession } = useAppState()
@@ -46,43 +49,50 @@ export default function App() {
     })
   }, [sessionData, completeSession])
 
+  const inner = (
+    <div className="page-enter h-full relative" key={page}>
+      {page === 'dashboard' && (
+        <Dashboard
+          onStartStudy={goTo('study')}
+          onGoStats={goTo('stats')}
+          onGoSettings={goTo('settings')}
+        />
+      )}
+      {page === 'study' && (
+        <StudyPage onEndStudy={handleEndStudy} />
+      )}
+      {page === 'rest' && (
+        <RestChat
+          totalMinutes={sessionData.totalMinutes}
+          onComplete={handleRestComplete}
+        />
+      )}
+      {page === 'report' && (
+        <StudyReport
+          totalMinutes={sessionData.totalMinutes}
+          focusHistory={sessionData.focusHistory}
+          distractionCount={sessionData.distractionCount}
+          oralReview={sessionData.oralReview}
+          onBackHome={handleBackHome}
+        />
+      )}
+      {page === 'stats' && (
+        <StatsPage onBack={goTo('dashboard')} />
+      )}
+      {page === 'settings' && (
+        <SettingsPage onBack={goTo('dashboard')} />
+      )}
+    </div>
+  )
+
+  // 原生 APK 模式：全屏无框  |  Web 开发模式：375×812 手机模拟框
+  if (isNative) {
+    return <div className="h-full w-full bg-[#f7f8ec] overflow-hidden">{inner}</div>
+  }
+
   return (
     <div className="flex justify-center items-center p-10 bg-[#1e1e1e] min-h-screen">
-      <PhoneFrame>
-        <div className="page-enter h-full relative" key={page}>
-          {page === 'dashboard' && (
-            <Dashboard
-              onStartStudy={goTo('study')}
-              onGoStats={goTo('stats')}
-              onGoSettings={goTo('settings')}
-            />
-          )}
-          {page === 'study' && (
-            <StudyPage onEndStudy={handleEndStudy} />
-          )}
-          {page === 'rest' && (
-            <RestChat
-              totalMinutes={sessionData.totalMinutes}
-              onComplete={handleRestComplete}
-            />
-          )}
-          {page === 'report' && (
-            <StudyReport
-              totalMinutes={sessionData.totalMinutes}
-              focusHistory={sessionData.focusHistory}
-              distractionCount={sessionData.distractionCount}
-              oralReview={sessionData.oralReview}
-              onBackHome={handleBackHome}
-            />
-          )}
-          {page === 'stats' && (
-            <StatsPage onBack={goTo('dashboard')} />
-          )}
-          {page === 'settings' && (
-            <SettingsPage onBack={goTo('dashboard')} />
-          )}
-        </div>
-      </PhoneFrame>
+      <PhoneFrame>{inner}</PhoneFrame>
     </div>
   )
 }
